@@ -95,14 +95,14 @@ pipeline {
         // STAGE 2: TESTS AUTOMATISÉS
         // ====================================================================
         // Exécute les tests unitaires et d'intégration avec Maven
-        // Exécuté sur: Container Docker avec Maven + Java 11
+        // Exécuté sur: Container Docker avec Maven + Java 17
         // Condition: Toutes les branches (main et autres)
         // ====================================================================
         stage('Tests Automatisés') {
             agent {
                 docker {
-                    // Image Docker officielle Maven avec Java 11
-                    image 'maven:3.8.6-openjdk-11'
+                    // Image Docker officielle Maven avec Java 17
+                    image 'maven:3.9-amazoncorretto-17'
                     
                     // Monte le cache Maven local pour accélérer les builds
                     // Sans ça, Maven retélécharge toutes les dépendances à chaque build
@@ -151,7 +151,7 @@ pipeline {
         stage('Vérification Qualité du Code - SonarCloud') {
             agent {
                 docker {
-                    image 'maven:3.8.6-openjdk-11'
+                    image 'maven:3.9-amazoncorretto-17'
                     args '-v /root/.m2:/root/.m2'
                 }
             }
@@ -191,7 +191,7 @@ pipeline {
         stage('Compilation et Packaging') {
             agent {
                 docker {
-                    image 'maven:3.8.6-openjdk-11'
+                    image 'maven:3.9-amazoncorretto-17'
                     args '-v /root/.m2:/root/.m2'
                 }
             }
@@ -435,7 +435,7 @@ pipeline {
         always {
             // On doit utiliser un node car 'sh' nécessite un agent
             // 'agent none' au niveau pipeline ne fournit pas de contexte
-            node('any') {
+            node {
                 script {
                     // Détermine le statut du build
                     // currentBuild.result peut être: SUCCESS, FAILURE, UNSTABLE, ABORTED
