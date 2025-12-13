@@ -8,7 +8,7 @@
  * 
  * Flux: GitLab → Jenkins → Tests → SonarCloud → Docker → AWS (Staging/Prod)
  * 
- * Auteur: Adalbert (adalbert-code)
+ * Auteur: Christelle (adalbert-code)
  * Formation: EAZYTraining DevOps BootCamp
  * ============================================================================
  */
@@ -102,7 +102,7 @@ pipeline {
             agent {
                 docker {
                     // Image Docker officielle Maven avec Java 11
-                    image 'maven:3.9-amazoncorretto-17'
+                    image 'maven:3.8.6-openjdk-11'
                     
                     // Monte le cache Maven local pour accélérer les builds
                     // Sans ça, Maven retélécharge toutes les dépendances à chaque build
@@ -151,7 +151,7 @@ pipeline {
         stage('Vérification Qualité du Code - SonarCloud') {
             agent {
                 docker {
-                    image 'maven:3.9-amazoncorretto-17'
+                    image 'maven:3.8.6-openjdk-11'
                     args '-v /root/.m2:/root/.m2'
                 }
             }
@@ -191,7 +191,7 @@ pipeline {
         stage('Compilation et Packaging') {
             agent {
                 docker {
-                    image 'maven:3.9-amazoncorretto-17'
+                    image 'maven:3.8.6-openjdk-11'
                     args '-v /root/.m2:/root/.m2'
                 }
             }
@@ -418,7 +418,7 @@ pipeline {
             }
         }
     }
-#--------------------------------------------------------------------------------------------------------	
+    
     // ========================================================================
     // POST - Actions exécutées après TOUS les stages
     // ========================================================================
@@ -429,33 +429,54 @@ pipeline {
         // ====================================================================
         // ALWAYS: S'exécute TOUJOURS (succès ou échec)
         // ====================================================================
+        // Envoie une notification Slack avec le statut de la pipeline
+        // IMPORTANT: Nécessite un contexte node pour exécuter 'sh'
+        // ====================================================================
         always {
-            script {
-                // Envoie une notification Slack
-                def status = currentBuild.result ?: 'SUCCESS'
-                def color = status == 'SUCCESS' ? 'good' : 'danger'
-                def emoji = status == 'SUCCESS' ? ':white_check_mark:' : ':x:'
-                
-                def message = """
-                    ${emoji} *Pipeline ${status}*
-                    Job: ${env.JOB_NAME}
-                    Build: #${env.BUILD_NUMBER}
-                    Branch: ${env.BRANCH_NAME}
-                    Duration: ${currentBuild.durationString}
-                """
-                
-                sh """
-                    curl -X POST ${SLACK_WEBHOOK} \
-                    -H 'Content-Type: application/json' \
-                    -d '{
-                        "attachments": [{
-                            "color": "${color}",
-                            "text": "${message}",
-                            "footer": "Jenkins CI/CD Pipeline",
-                            "ts": ${currentBuild.startTimeInMillis / 1000}
-                        }]
-                    }'
-                """
+            // On doit utiliser un node car 'sh' nécessite un agent
+            // 'agent none' au niveau pipeline ne fournit pas de contexte
+            node('any') {
+                script {
+                    // Détermine le statut du build
+                    // currentBuild.result peut être: SUCCESS, FAILURE, UNSTABLE, ABORTED
+                    // Si null (pas encore défini), on considère SUCCESS
+                    def status = currentBuild.result ?: 'SUCCESS'
+                    
+                    // Couleur du message Slack
+                    // 'good' (vert) si SUCCESS, 'danger' (rouge) sinon
+                    def color = status == 'SUCCESS' ? 'good' : 'danger'
+                    
+                    // Emoji selon le statut
+                    def emoji = status == 'SUCCESS' ? ':white_check_mark:' : ':x:'
+                    
+                    // Message formaté pour Slack
+                    // * = texte en gras dans Slack
+                    def message = """
+                        ${emoji} *Pipeline ${status}*
+                        Job: ${env.JOB_NAME}
+                        Build: #${env.BUILD_NUMBER}
+                        Branch: ${env.BRANCH_NAME}
+                        Duration: ${currentBuild.durationString}
+                    """
+                    
+                    // Envoie le message à Slack via webhook
+                    // -X POST = méthode HTTP POST
+                    // -H = header Content-Type
+                    // -d = data (payload JSON)
+                    // Format Slack: attachments avec color, text, footer, timestamp
+                    sh """
+                        curl -X POST ${SLACK_WEBHOOK} \
+                        -H 'Content-Type: application/json' \
+                        -d '{
+                            "attachments": [{
+                                "color": "${color}",
+                                "text": "${message}",
+                                "footer": "Jenkins CI/CD Pipeline",
+                                "ts": ${currentBuild.startTimeInMillis / 1000}
+                            }]
+                        }'
+                    """
+                }
             }
         }
         
@@ -473,32 +494,13 @@ pipeline {
         failure {
             echo '❌ Pipeline échouée!'
             echo '🔍 Vérifiez les logs pour identifier le problème'
-        }
-        
-        // ====================================================================
-        // UNSTABLE: S'exécute si le build est instable (ex: tests échoués)
-        // ====================================================================
-        unstable {
-            echo '⚠️ Pipeline instable!'
-            echo '🧪 Certains tests ont échoué mais ne sont pas critiques'
-        }
-        
-        // ====================================================================
-        // ABORTED: S'exécute si la pipeline est annulée manuellement
-        // ====================================================================
-        aborted {
-            echo '⏸️ Pipeline annulée manuellement'
-            echo '👤 Annulation effectuée par un utilisateur'
-        }
-        
-        // ====================================================================
-        // CHANGED: S'exécute si le statut a changé depuis la dernière exécution
-        // ====================================================================
-        changed {
-            echo '🔄 Statut de la pipeline changé depuis la dernière exécution'
+            // Ici on pourrait ajouter d'autres actions:
+            // - Envoyer un email aux développeurs
+            // - Créer un ticket Jira automatiquement
+            // - Rollback automatique
         }
     }
-#--------------------------------------------------------------------------------------------------------	
+}
 
 /*
  * ============================================================================
