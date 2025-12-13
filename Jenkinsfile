@@ -418,7 +418,7 @@ pipeline {
             }
         }
     }
-    
+#--------------------------------------------------------------------------------------------------------	
     // ========================================================================
     // POST - Actions exécutées après TOUS les stages
     // ========================================================================
@@ -429,24 +429,13 @@ pipeline {
         // ====================================================================
         // ALWAYS: S'exécute TOUJOURS (succès ou échec)
         // ====================================================================
-        // Envoie une notification Slack avec le statut de la pipeline
-        // ====================================================================
         always {
             script {
-                // Détermine le statut du build
-                // currentBuild.result peut être: SUCCESS, FAILURE, UNSTABLE, ABORTED
-                // Si null (pas encore défini), on considère SUCCESS
+                // Envoie une notification Slack
                 def status = currentBuild.result ?: 'SUCCESS'
-                
-                // Couleur du message Slack
-                // 'good' (vert) si SUCCESS, 'danger' (rouge) sinon
                 def color = status == 'SUCCESS' ? 'good' : 'danger'
-                
-                // Emoji selon le statut
                 def emoji = status == 'SUCCESS' ? ':white_check_mark:' : ':x:'
                 
-                // Message formaté pour Slack
-                // * = texte en gras dans Slack
                 def message = """
                     ${emoji} *Pipeline ${status}*
                     Job: ${env.JOB_NAME}
@@ -455,11 +444,6 @@ pipeline {
                     Duration: ${currentBuild.durationString}
                 """
                 
-                // Envoie le message à Slack via webhook
-                // -X POST = méthode HTTP POST
-                // -H = header Content-Type
-                // -d = data (payload JSON)
-                // Format Slack: attachments avec color, text, footer, timestamp
                 sh """
                     curl -X POST ${SLACK_WEBHOOK} \
                     -H 'Content-Type: application/json' \
@@ -489,13 +473,32 @@ pipeline {
         failure {
             echo '❌ Pipeline échouée!'
             echo '🔍 Vérifiez les logs pour identifier le problème'
-            // Ici on pourrait ajouter d'autres actions:
-            // - Envoyer un email aux développeurs
-            // - Créer un ticket Jira automatiquement
-            // - Rollback automatique
+        }
+        
+        // ====================================================================
+        // UNSTABLE: S'exécute si le build est instable (ex: tests échoués)
+        // ====================================================================
+        unstable {
+            echo '⚠️ Pipeline instable!'
+            echo '🧪 Certains tests ont échoué mais ne sont pas critiques'
+        }
+        
+        // ====================================================================
+        // ABORTED: S'exécute si la pipeline est annulée manuellement
+        // ====================================================================
+        aborted {
+            echo '⏸️ Pipeline annulée manuellement'
+            echo '👤 Annulation effectuée par un utilisateur'
+        }
+        
+        // ====================================================================
+        // CHANGED: S'exécute si le statut a changé depuis la dernière exécution
+        // ====================================================================
+        changed {
+            echo '🔄 Statut de la pipeline changé depuis la dernière exécution'
         }
     }
-}
+#--------------------------------------------------------------------------------------------------------	
 
 /*
  * ============================================================================
