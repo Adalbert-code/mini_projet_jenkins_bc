@@ -168,7 +168,7 @@ pipeline {
                 // withSonarQubeEnv configure automatiquement les variables d'env SonarQube
                 // 'SonarCloud' = nom du serveur SonarQube configuré dans Jenkins
                 // IMPORTANT: Ce serveur doit être configuré dans Jenkins > Configure System
-                withSonarQubeEnv('SonarCloud') {
+                // withSonarQubeEnv('SonarCloud') {
                     sh """
                         mvn sonar:sonar \
                         -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
@@ -176,7 +176,7 @@ pipeline {
                         -Dsonar.host.url=https://sonarcloud.io \
                         -Dsonar.login=${SONAR_TOKEN}
                     """
-                }
+                //}
             }
         }
         
