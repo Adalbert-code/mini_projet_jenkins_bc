@@ -435,7 +435,7 @@ pipeline {
         always {
             // On doit utiliser un node car 'sh' nécessite un agent
             // 'agent none' au niveau pipeline ne fournit pas de contexte
-            node {
+            node('') {
                 script {
                     // Détermine le statut du build
                     // currentBuild.result peut être: SUCCESS, FAILURE, UNSTABLE, ABORTED
