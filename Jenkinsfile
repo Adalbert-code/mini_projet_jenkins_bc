@@ -95,14 +95,14 @@ pipeline {
         // STAGE 2: TESTS AUTOMATISÉS
         // ====================================================================
         // Exécute les tests unitaires et d'intégration avec Maven
-        // Exécuté sur: Container Docker avec Maven + Java 17
+        // Exécuté sur: Container Docker avec Maven + Java 11
         // Condition: Toutes les branches (main et autres)
         // ====================================================================
         stage('Tests Automatisés') {
             agent {
                 docker {
-                    // Image Docker officielle Maven avec Java 17
-                    image 'maven:3.9-amazoncorretto-17'
+                    // Image Docker officielle Maven avec Java 11
+                    image 'maven:3.8.6-openjdk-11'
                     
                     // Monte le cache Maven local pour accélérer les builds
                     // Sans ça, Maven retélécharge toutes les dépendances à chaque build
@@ -151,7 +151,7 @@ pipeline {
         stage('Vérification Qualité du Code - SonarCloud') {
             agent {
                 docker {
-                    image 'maven:3.9-amazoncorretto-17'
+                    image 'maven:3.8.6-openjdk-11'
                     args '-v /root/.m2:/root/.m2'
                 }
             }
@@ -275,9 +275,10 @@ pipeline {
         // STAGE 6: DÉPLOIEMENT STAGING
         // ====================================================================
         // Déploie l'application sur le serveur de staging (pré-production)
-        // 1. Pull l'image Docker depuis DockerHub
-        // 2. Arrête et supprime l'ancien container
-        // 3. Lance le nouveau container
+        // 1. Installe/Vérifie MySQL avec Docker
+        // 2. Pull l'image Docker de l'application depuis DockerHub
+        // 3. Arrête et supprime l'ancien container applicatif
+        // 4. Lance le nouveau container applicatif
         // Exécuté sur: Agent Jenkins
         // Connexion: SSH vers instance EC2 staging
         // Condition: UNIQUEMENT sur la branche 'main'
@@ -300,20 +301,63 @@ pipeline {
                         # -o StrictHostKeyChecking=no = ne demande pas de confirmer le fingerprint
                         # Les commandes entre quotes sont exécutées sur le serveur distant
                         ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} '
-                            # Pull la nouvelle image Docker depuis DockerHub
+                            # ============================================================
+                            # ÉTAPE 1: INSTALLATION/VÉRIFICATION MYSQL
+                            # ============================================================
+                            echo "🔍 Vérification de MySQL..."
+                            
+                            # Vérifie si MySQL tourne déjà
+                            if docker ps | grep -q mysql-staging; then
+                                echo "✅ MySQL est déjà en cours d'\''exécution"
+                            else
+                                echo "📦 Installation de MySQL..."
+                                
+                                # Supprime l'ancien container MySQL s'\''il existe (mais arrêté)
+                                docker rm mysql-staging 2>/dev/null || true
+                                
+                                # Lance MySQL avec Docker
+                                # -d = mode détaché
+                                # --name = nom du container
+                                # -p 3306:3306 = expose le port MySQL
+                                # -e = variables d'\''environnement pour la config MySQL
+                                # --restart unless-stopped = redémarre automatiquement sauf si arrêté manuellement
+                                docker run -d \
+                                    --name mysql-staging \
+                                    -p 3306:3306 \
+                                    -e MYSQL_ROOT_PASSWORD=password \
+                                    -e MYSQL_DATABASE=db_paymybuddy \
+                                    --restart unless-stopped \
+                                    mysql:8.0
+                                
+                                echo "⏳ Attente du démarrage de MySQL (30 secondes)..."
+                                sleep 30
+                                
+                                echo "✅ MySQL installé et démarré"
+                            fi
+                            
+                            # ============================================================
+                            # ÉTAPE 2: DÉPLOIEMENT DE L'\''APPLICATION
+                            # ============================================================
+                            echo "📥 Pull de l'\''image Docker de l'\''application..."
                             docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
                             
+                            echo "🛑 Arrêt de l'\''ancien container applicatif..."
                             # Arrête le container existant (|| true = ne pas échouer si inexistant)
                             docker stop paymybuddy-staging || true
                             
+                            echo "🗑️  Suppression de l'\''ancien container..."
                             # Supprime le container existant
                             docker rm paymybuddy-staging || true
                             
+                            echo "🚀 Lancement du nouveau container..."
                             # Lance le nouveau container
                             # -d = mode détaché (en arrière-plan)
                             # --name = nom du container
-                            # -p 8080:8080 = map le port 8080 du container vers le port 8080 de l'hôte
+                            # -p 8080:8080 = map le port 8080 du container vers le port 8080 de l'\''hôte
+                            # Les variables d'\''environnement Spring sont déjà dans l'\''image Docker
                             docker run -d --name paymybuddy-staging -p 8080:8080 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                            
+                            echo "✅ Déploiement staging terminé!"
                         '
                     """
                 }
@@ -357,7 +401,10 @@ pipeline {
         // ====================================================================
         // Déploie l'application sur le serveur de production
         // IMPORTANT: Nécessite une validation manuelle avant de procéder!
-        // Process identique au déploiement staging
+        // 1. Installe/Vérifie MySQL avec Docker
+        // 2. Pull l'image Docker de l'application depuis DockerHub
+        // 3. Arrête et supprime l'ancien container applicatif
+        // 4. Lance le nouveau container applicatif
         // Exécuté sur: Agent Jenkins
         // Connexion: SSH vers instance EC2 production
         // Condition: UNIQUEMENT sur la branche 'main'
@@ -380,10 +427,52 @@ pipeline {
                 sshagent(credentials: ['aws-ssh-prod']) {
                     sh """
                         ssh -o StrictHostKeyChecking=no ${SSH_USER}@${PROD_HOST} '
+                            # ============================================================
+                            # ÉTAPE 1: INSTALLATION/VÉRIFICATION MYSQL
+                            # ============================================================
+                            echo "🔍 Vérification de MySQL..."
+                            
+                            # Vérifie si MySQL tourne déjà
+                            if docker ps | grep -q mysql-prod; then
+                                echo "✅ MySQL est déjà en cours d'\''exécution"
+                            else
+                                echo "📦 Installation de MySQL..."
+                                
+                                # Supprime l'ancien container MySQL s'\''il existe (mais arrêté)
+                                docker rm mysql-prod 2>/dev/null || true
+                                
+                                # Lance MySQL avec Docker
+                                # IMPORTANT: En production, utilise des secrets plus sécurisés!
+                                docker run -d \
+                                    --name mysql-prod \
+                                    -p 3306:3306 \
+                                    -e MYSQL_ROOT_PASSWORD=password \
+                                    -e MYSQL_DATABASE=db_paymybuddy \
+                                    --restart unless-stopped \
+                                    mysql:8.0
+                                
+                                echo "⏳ Attente du démarrage de MySQL (30 secondes)..."
+                                sleep 30
+                                
+                                echo "✅ MySQL installé et démarré"
+                            fi
+                            
+                            # ============================================================
+                            # ÉTAPE 2: DÉPLOIEMENT DE L'\''APPLICATION
+                            # ============================================================
+                            echo "📥 Pull de l'\''image Docker de l'\''application..."
                             docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
+                            
+                            echo "🛑 Arrêt de l'\''ancien container applicatif..."
                             docker stop paymybuddy-prod || true
+                            
+                            echo "🗑️  Suppression de l'\''ancien container..."
                             docker rm paymybuddy-prod || true
+                            
+                            echo "🚀 Lancement du nouveau container..."
                             docker run -d --name paymybuddy-prod -p 8080:8080 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                            
+                            echo "✅ Déploiement production terminé!"
                         '
                     """
                 }
@@ -430,52 +519,37 @@ pipeline {
         // ALWAYS: S'exécute TOUJOURS (succès ou échec)
         // ====================================================================
         // Envoie une notification Slack avec le statut de la pipeline
-        // IMPORTANT: Nécessite un contexte node pour exécuter 'sh'
         // ====================================================================
         always {
-            // On doit utiliser un node car 'sh' nécessite un agent
-            // 'agent none' au niveau pipeline ne fournit pas de contexte
-            node('') {
-                script {
-                    // Détermine le statut du build
-                    // currentBuild.result peut être: SUCCESS, FAILURE, UNSTABLE, ABORTED
-                    // Si null (pas encore défini), on considère SUCCESS
-                    def status = currentBuild.result ?: 'SUCCESS'
-                    
-                    // Couleur du message Slack
-                    // 'good' (vert) si SUCCESS, 'danger' (rouge) sinon
-                    def color = status == 'SUCCESS' ? 'good' : 'danger'
-                    
-                    // Emoji selon le statut
-                    def emoji = status == 'SUCCESS' ? ':white_check_mark:' : ':x:'
-                    
-                    // Message formaté pour Slack
-                    // * = texte en gras dans Slack
-                    def message = """
-                        ${emoji} *Pipeline ${status}*
-                        Job: ${env.JOB_NAME}
-                        Build: #${env.BUILD_NUMBER}
-                        Branch: ${env.BRANCH_NAME}
-                        Duration: ${currentBuild.durationString}
-                    """
-                    
-                    // Envoie le message à Slack via webhook
-                    // -X POST = méthode HTTP POST
-                    // -H = header Content-Type
-                    // -d = data (payload JSON)
-                    // Format Slack: attachments avec color, text, footer, timestamp
-                    sh """
-                        curl -X POST ${SLACK_WEBHOOK} \
-                        -H 'Content-Type: application/json' \
-                        -d '{
-                            "attachments": [{
-                                "color": "${color}",
-                                "text": "${message}",
-                                "footer": "Jenkins CI/CD Pipeline",
-                                "ts": ${currentBuild.startTimeInMillis / 1000}
-                            }]
-                        }'
-                    """
+            script {
+                // Détermine le statut du build
+                // currentBuild.result peut être: SUCCESS, FAILURE, UNSTABLE, ABORTED
+                // Si null (pas encore défini), on considère SUCCESS
+                def status = currentBuild.result ?: 'SUCCESS'
+                
+                // Couleur du message Slack
+                // 'good' (vert) si SUCCESS, 'danger' (rouge) sinon
+                def color = status == 'SUCCESS' ? 'good' : 'danger'
+                
+                // Emoji selon le statut
+                def emoji = status == 'SUCCESS' ? ':white_check_mark:' : ':x:'
+                
+                // Message formaté pour Slack (échappement pour éviter les erreurs JSON)
+                def message = "${emoji} Pipeline ${status} - Job: ${env.JOB_NAME} Build: #${env.BUILD_NUMBER}"
+                
+                // Utilise catchError pour ne pas faire échouer le build si Slack échoue
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    // Utilise httpRequest ou sh selon disponibilité
+                    // On wrap dans un try-catch pour gérer l'absence d'agent
+                    try {
+                        sh """
+                            curl -X POST '${SLACK_WEBHOOK}' \
+                            -H 'Content-Type: application/json' \
+                            -d '{"text": "${message}"}'
+                        """
+                    } catch (Exception e) {
+                        echo "Failed to send Slack notification: ${e.message}"
+                    }
                 }
             }
         }
