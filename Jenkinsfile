@@ -288,9 +288,9 @@ pipeline {
             
             // IMPORTANT: Ce stage s'exécute UNIQUEMENT sur la branche main
             // Les autres branches (develop, feature/*) ne déploient PAS
-            when {
-                branch 'main'
-            }
+            // when {
+            //    branch 'main'
+            //}
             
             steps {
                 // sshagent = utilise les credentials SSH pour se connecter
@@ -376,9 +376,9 @@ pipeline {
             agent any
             
             // S'exécute uniquement sur main (après déploiement staging)
-            when {
-                branch 'main'
-            }
+            //when {
+            //    branch 'main'
+            //}
             
             steps {
                 script {
@@ -413,9 +413,9 @@ pipeline {
             agent any
             
             // S'exécute uniquement sur main
-            when {
-                branch 'main'
-            }
+            //when {
+            //    branch 'main'
+            //}
             
             steps {
                 // VALIDATION MANUELLE REQUISE
@@ -490,9 +490,9 @@ pipeline {
         stage('Tests de Validation Production') {
             agent any
             
-            when {
-                branch 'main'
-            }
+            // when {
+            //    branch 'main'
+            //}
             
             steps {
                 script {
