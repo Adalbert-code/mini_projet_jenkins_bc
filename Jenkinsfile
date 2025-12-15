@@ -288,22 +288,63 @@ pipeline {
                     
             steps {
                 sshagent(credentials: ['aws-ssh-staging']) {
-                    sh """
-                        # Exécuter chaque commande séparément
-                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} "echo '=== DÉBUT DÉPLOIEMENT ==='"
+                    // Créer un script de déploiement local
+                    sh '''
+                        # Créer le script de déploiement
+                        cat > deploy-staging.sh << 'SCRIPT_EOF'
+                        #!/bin/bash
+                        set -e
+                        echo "=== DÉPLOIEMENT STAGING PAYMYBUDDY ==="
                         
                         # MySQL
-                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} "docker ps | grep -q mysql-staging || (echo 'Installation MySQL...' && docker rm mysql-staging 2>/dev/null || true && docker run -d --name mysql-staging -p 3306:3306 -e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=db_paymybuddy --restart unless-stopped mysql:8.0 && sleep 30)"
+                        echo "1. Vérification MySQL..."
+                        if docker ps | grep -q mysql-staging; then
+                            echo "   ✓ MySQL déjà démarré"
+                        else
+                            echo "   → Installation MySQL..."
+                            docker rm mysql-staging 2>/dev/null || true
+                            docker run -d \
+                                --name mysql-staging \
+                                -p 3306:3306 \
+                                -e MYSQL_ROOT_PASSWORD=password \
+                                -e MYSQL_DATABASE=db_paymybuddy \
+                                --restart unless-stopped \
+                                mysql:8.0
+                            echo "   → Attente démarrage MySQL..."
+                            sleep 30
+                            echo "   ✓ MySQL installé"
+                        fi
                         
                         # Application
-                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} "echo 'Pull application...' && docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}"
-                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} "echo 'Nettoyage...' && docker stop paymybuddy-staging 2>/dev/null || true && docker rm paymybuddy-staging 2>/dev/null || true"
-                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} "echo 'Lancement...' && docker run -d --name paymybuddy-staging -p 8080:8080 ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                        echo "2. Déploiement application..."
+                        echo "   → Pull image..."
+                        docker pull ''' + DOCKER_IMAGE + ''':''' + DOCKER_TAG + '''
                         
-                        # Vérification
-                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} "echo 'Vérification...' && sleep 5 && docker ps | grep paymybuddy-staging"
-                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} "echo '=== DÉPLOIEMENT RÉUSSI ==='"
-                    """
+                        echo "   → Nettoyage ancien container..."
+                        docker stop paymybuddy-staging 2>/dev/null || true
+                        docker rm paymybuddy-staging 2>/dev/null || true
+                        
+                        echo "   → Lancement nouveau container..."
+                        docker run -d --name paymybuddy-staging -p 8080:8080 ''' + DOCKER_IMAGE + ''':''' + DOCKER_TAG + '''
+                        
+                        echo "3. Vérification..."
+                        sleep 10
+                        echo "Containers en cours:"
+                        docker ps
+                        
+                        echo "=== DÉPLOIEMENT RÉUSSI ==="
+                        SCRIPT_EOF
+                        
+                        # Copier et exécuter sur le serveur distant
+                        echo "Copie du script sur le serveur..."
+                        scp -o StrictHostKeyChecking=no -o ConnectTimeout=10 deploy-staging.sh ubuntu@3.208.15.55:/tmp/
+                        
+                        echo "Exécution du script..."
+                        ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes ubuntu@3.208.15.55 "
+                            chmod +x /tmp/deploy-staging.sh
+                            /tmp/deploy-staging.sh
+                        "
+                    '''
                 }
             }
         }
