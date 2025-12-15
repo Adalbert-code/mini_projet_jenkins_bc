@@ -289,50 +289,20 @@ pipeline {
             steps {
                 sshagent(credentials: ['aws-ssh-staging']) {
                     sh """
-                        # Utilisez EOF pour éviter les problèmes de guillemets
-                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} << 'EOF'
-                        #!/bin/bash
-                        set -e
+                        # Exécuter chaque commande séparément
+                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} "echo '=== DÉBUT DÉPLOIEMENT ==='"
                         
-                        echo "Vérification de MySQL..."
+                        # MySQL
+                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} "docker ps | grep -q mysql-staging || (echo 'Installation MySQL...' && docker rm mysql-staging 2>/dev/null || true && docker run -d --name mysql-staging -p 3306:3306 -e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=db_paymybuddy --restart unless-stopped mysql:8.0 && sleep 30)"
                         
-                        # Vérifie si MySQL tourne déjà
-                        if docker ps | grep -q mysql-staging; then
-                            echo "MySQL est déjà en cours d'exécution"
-                        else
-                            echo "Installation de MySQL..."
-                            
-                            # Supprime l'ancien container MySQL s'il existe
-                            docker rm mysql-staging 2>/dev/null || true
-                            
-                            # Lance MySQL avec Docker
-                            docker run -d \\
-                                --name mysql-staging \\
-                                -p 3306:3306 \\
-                                -e MYSQL_ROOT_PASSWORD=password \\
-                                -e MYSQL_DATABASE=db_paymybuddy \\
-                                --restart unless-stopped \\
-                                mysql:8.0
-                            
-                            echo "Attente du démarrage de MySQL (30 secondes)..."
-                            sleep 30
-                            echo "MySQL installé et démarré"
-                        fi
+                        # Application
+                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} "echo 'Pull application...' && docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} "echo 'Nettoyage...' && docker stop paymybuddy-staging 2>/dev/null || true && docker rm paymybuddy-staging 2>/dev/null || true"
+                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} "echo 'Lancement...' && docker run -d --name paymybuddy-staging -p 8080:8080 ${DOCKER_IMAGE}:${DOCKER_TAG}"
                         
-                        echo "Pull de l'image Docker de l'application..."
-                        docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
-                        
-                        echo "Arrêt de l'ancien container applicatif..."
-                        docker stop paymybuddy-staging || true
-                        
-                        echo "Suppression de l'ancien container..."
-                        docker rm paymybuddy-staging || true
-                        
-                        echo "Lancement du nouveau container..."
-                        docker run -d --name paymybuddy-staging -p 8080:8080 ${DOCKER_IMAGE}:${DOCKER_TAG}
-                        
-                        echo "Déploiement staging terminé!"
-                        EOF
+                        # Vérification
+                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} "echo 'Vérification...' && sleep 5 && docker ps | grep paymybuddy-staging"
+                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} "echo '=== DÉPLOIEMENT RÉUSSI ==='"
                     """
                 }
             }
