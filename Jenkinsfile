@@ -116,23 +116,24 @@ pipeline {
                 }
             }
         }
-        
-        stage('Déploiement Staging') {
+        stage('Déploiement Production') {
             agent any
             steps {
-                sshagent(credentials: ['aws-ssh-staging']) {
+                input message: 'Déployer en production?', ok: 'Déployer'
+                
+                sshagent(credentials: ['aws-ssh-prod']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} '
+                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${PROD_HOST} '
                             echo "Verification de MySQL..."
                             
-                            if docker ps | grep -q mysql-staging; then
+                            if docker ps | grep -q mysql-prod; then
                                 echo "MySQL deja en cours execution"
                             else
                                 echo "Installation de MySQL..."
-                                docker rm mysql-staging 2>/dev/null || true
+                                docker rm mysql-prod 2>/dev/null || true
                                 
                                 docker run -d \\
-                                    --name mysql-staging \\
+                                    --name mysql-prod \\
                                     -p 3306:3306 \\
                                     -e MYSQL_ROOT_PASSWORD=password \\
                                     -e MYSQL_DATABASE=db_paymybuddy \\
@@ -148,32 +149,33 @@ pipeline {
                             docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
                             
                             echo "Arret de l ancien container applicatif..."
-                            docker stop paymybuddy-staging || true
+                            docker stop paymybuddy-prod || true
                             
                             echo "Suppression de l ancien container..."
-                            docker rm paymybuddy-staging || true
+                            docker rm paymybuddy-prod || true
                             
                             echo "Lancement du nouveau container..."
-                            docker run -d --name paymybuddy-staging -p 8080:8080 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                            docker run -d --name paymybuddy-prod -p 8080:8080 ${DOCKER_IMAGE}:${DOCKER_TAG}
                             
-                            echo "Deploiement staging termine!"
+                            echo "Deploiement production termine!"
                         '
                     """
                 }
             }
         }
         
-        stage('Tests de Validation Staging') {
+        stage('Tests de Validation Production') {
             agent any
             steps {
                 script {
                     sleep(time: 30, unit: 'SECONDS')
                     sh """
-                        curl -f http://${STAGING_HOST}:8080/actuator/health || exit 1
+                        curl -f http://${PROD_HOST}:8080/actuator/health || exit 1
                     """
                 }
             }
         }
+    }
     
     post {
         always {
