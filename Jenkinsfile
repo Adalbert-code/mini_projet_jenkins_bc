@@ -272,99 +272,75 @@ pipeline {
         }
         
         // ====================================================================
-        // STAGE 6: DÉPLOIEMENT STAGING
+        // STAGE 6: DEPLOIEMENT STAGING
         // ====================================================================
-        // Déploie l'application sur le serveur de staging (pré-production)
+        // Deploie l application sur le serveur de staging (pre-production)
         // 1. Installe/Vérifie MySQL avec Docker
-        // 2. Pull l'image Docker de l'application depuis DockerHub
-        // 3. Arrête et supprime l'ancien container applicatif
+        // 2. Pull l image Docker de l application depuis DockerHub
+        // 3. Arrete et supprime l'ancien container applicatif
         // 4. Lance le nouveau container applicatif
-        // Exécuté sur: Agent Jenkins
+        // Exécute sur: Agent Jenkins
         // Connexion: SSH vers instance EC2 staging
         // Condition: UNIQUEMENT sur la branche 'main'
         // ====================================================================
         stage('Déploiement Staging') {
             agent any
-            
-            // IMPORTANT: Ce stage s'exécute UNIQUEMENT sur la branche main
-            // Les autres branches (develop, feature/*) ne déploient PAS
-            
+                    
             steps {
-                // sshagent = utilise les credentials SSH pour se connecter
-                // 'aws-ssh-staging' = ID du credential dans Jenkins (clé privée .pem)
                 sshagent(credentials: ['aws-ssh-staging']) {
                     sh """
-                        # Se connecter en SSH à l'instance staging
-                        # -o StrictHostKeyChecking=no = ne demande pas de confirmer le fingerprint
-                        # Les commandes entre quotes sont exécutées sur le serveur distant
-                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} '
-                            # ============================================================
-                            # ÉTAPE 1: INSTALLATION/VÉRIFICATION MYSQL
-                            # ============================================================
-                            echo "🔍 Vérification de MySQL..."
+                        # Utilisez EOF pour éviter les problèmes de guillemets
+                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} << 'EOF'
+                        #!/bin/bash
+                        set -e
+                        
+                        echo "Vérification de MySQL..."
+                        
+                        # Vérifie si MySQL tourne déjà
+                        if docker ps | grep -q mysql-staging; then
+                            echo "MySQL est déjà en cours d'exécution"
+                        else
+                            echo "Installation de MySQL..."
                             
-                            # Vérifie si MySQL tourne déjà
-                            if docker ps | grep -q mysql-staging; then
-                                echo "✅ MySQL est déjà en cours d'\''exécution"
-                            else
-                                echo "📦 Installation de MySQL..."
-                                
-                                # Supprime l'ancien container MySQL s'\''il existe (mais arrêté)
-                                docker rm mysql-staging 2>/dev/null || true
-                                
-                                # Lance MySQL avec Docker
-                                # -d = mode détaché
-                                # --name = nom du container
-                                # -p 3306:3306 = expose le port MySQL
-                                # -e = variables d'\''environnement pour la config MySQL
-                                # --restart unless-stopped = redémarre automatiquement sauf si arrêté manuellement
-                                docker run -d \
-                                    --name mysql-staging \
-                                    -p 3306:3306 \
-                                    -e MYSQL_ROOT_PASSWORD=password \
-                                    -e MYSQL_DATABASE=db_paymybuddy \
-                                    --restart unless-stopped \
-                                    mysql:8.0
-                                
-                                echo "⏳ Attente du démarrage de MySQL (30 secondes)..."
-                                sleep 30
-                                
-                                echo "✅ MySQL installé et démarré"
-                            fi
+                            # Supprime l'ancien container MySQL s'il existe
+                            docker rm mysql-staging 2>/dev/null || true
                             
-                            # ============================================================
-                            # ÉTAPE 2: DÉPLOIEMENT DE L'\''APPLICATION
-                            # ============================================================
-                            echo "📥 Pull de l'\''image Docker de l'\''application..."
-                            docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
+                            # Lance MySQL avec Docker
+                            docker run -d \\
+                                --name mysql-staging \\
+                                -p 3306:3306 \\
+                                -e MYSQL_ROOT_PASSWORD=password \\
+                                -e MYSQL_DATABASE=db_paymybuddy \\
+                                --restart unless-stopped \\
+                                mysql:8.0
                             
-                            echo "🛑 Arrêt de l'\''ancien container applicatif..."
-                            # Arrête le container existant (|| true = ne pas échouer si inexistant)
-                            docker stop paymybuddy-staging || true
-                            
-                            echo "🗑️  Suppression de l'\''ancien container..."
-                            # Supprime le container existant
-                            docker rm paymybuddy-staging || true
-                            
-                            echo "🚀 Lancement du nouveau container..."
-                            # Lance le nouveau container
-                            # -d = mode détaché (en arrière-plan)
-                            # --name = nom du container
-                            # -p 8080:8080 = map le port 8080 du container vers le port 8080 de l'\''hôte
-                            # Les variables d'\''environnement Spring sont déjà dans l'\''image Docker
-                            docker run -d --name paymybuddy-staging -p 8080:8080 ${DOCKER_IMAGE}:${DOCKER_TAG}
-                            
-                            echo "✅ Déploiement staging terminé!"
-                        '
+                            echo "Attente du démarrage de MySQL (30 secondes)..."
+                            sleep 30
+                            echo "MySQL installé et démarré"
+                        fi
+                        
+                        echo "Pull de l'image Docker de l'application..."
+                        docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        
+                        echo "Arrêt de l'ancien container applicatif..."
+                        docker stop paymybuddy-staging || true
+                        
+                        echo "Suppression de l'ancien container..."
+                        docker rm paymybuddy-staging || true
+                        
+                        echo "Lancement du nouveau container..."
+                        docker run -d --name paymybuddy-staging -p 8080:8080 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        
+                        echo "Déploiement staging terminé!"
+                        EOF
                     """
                 }
             }
         }
-        
         // ====================================================================
         // STAGE 7: TESTS DE VALIDATION STAGING
         // ====================================================================
-        // Vérifie que l'application déployée fonctionne correctement
+        // Vérifie que l application deployée fonctionne correctement
         // Utilise le endpoint /actuator/health de Spring Boot
         // Exécuté sur: Agent Jenkins
         // Condition: UNIQUEMENT sur la branche 'main'
@@ -381,7 +357,7 @@ pipeline {
                     
                     // Health check via curl
                     // -f = échoue si le serveur retourne une erreur HTTP (404, 500, etc.)
-                    // Si l'app ne répond pas ou retourne une erreur, le build échoue
+                    // Si l app ne répond pas ou retourne une erreur, le build échoue
                     sh """
                         curl -f http://${STAGING_HOST}:8080/actuator/health || exit 1
                     """
@@ -390,12 +366,12 @@ pipeline {
         }
         
         // ====================================================================
-        // STAGE 8: DÉPLOIEMENT PRODUCTION
+        // STAGE 8: DEPLOIEMENT PRODUCTION
         // ====================================================================
-        // Déploie l'application sur le serveur de production
+        // Déploie l application sur le serveur de production
         // IMPORTANT: Nécessite une validation manuelle avant de procéder!
         // 1. Installe/Vérifie MySQL avec Docker
-        // 2. Pull l'image Docker de l'application depuis DockerHub
+        // 2. Pull l image Docker de l'application depuis DockerHub
         // 3. Arrête et supprime l'ancien container applicatif
         // 4. Lance le nouveau container applicatif
         // Exécuté sur: Agent Jenkins
@@ -419,15 +395,15 @@ pipeline {
                             # ============================================================
                             # ÉTAPE 1: INSTALLATION/VÉRIFICATION MYSQL
                             # ============================================================
-                            echo "🔍 Vérification de MySQL..."
+                            echo " Vérification de MySQL..."
                             
                             # Vérifie si MySQL tourne déjà
                             if docker ps | grep -q mysql-prod; then
-                                echo "✅ MySQL est déjà en cours d'\''exécution"
+                                echo " MySQL est déjà en cours d exécution"
                             else
-                                echo "📦 Installation de MySQL..."
+                                echo " Installation de MySQL..."
                                 
-                                # Supprime l'ancien container MySQL s'\''il existe (mais arrêté)
+                                # Supprime l ancien container MySQL s il existe (mais arrêté)
                                 docker rm mysql-prod 2>/dev/null || true
                                 
                                 # Lance MySQL avec Docker
@@ -440,28 +416,28 @@ pipeline {
                                     --restart unless-stopped \
                                     mysql:8.0
                                 
-                                echo "⏳ Attente du démarrage de MySQL (30 secondes)..."
+                                echo "  Attente du démarrage de MySQL (30 secondes)..."
                                 sleep 30
                                 
-                                echo "✅ MySQL installé et démarré"
+                                echo "  MySQL installé et démarré"
                             fi
                             
                             # ============================================================
-                            # ÉTAPE 2: DÉPLOIEMENT DE L'\''APPLICATION
+                            # ÉTAPE 2: DEPLOIEMENT DE L APPLICATION
                             # ============================================================
-                            echo "📥 Pull de l'\''image Docker de l'\''application..."
+                            echo " Pull de l image Docker de l application..."
                             docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
                             
-                            echo "🛑 Arrêt de l'\''ancien container applicatif..."
+                            echo " Arrêt de l ancien container applicatif..."
                             docker stop paymybuddy-prod || true
                             
-                            echo "🗑️  Suppression de l'\''ancien container..."
+                            echo " Suppression de l ancien container..."
                             docker rm paymybuddy-prod || true
                             
-                            echo "🚀 Lancement du nouveau container..."
+                            echo " Lancement du nouveau container..."
                             docker run -d --name paymybuddy-prod -p 8080:8080 ${DOCKER_IMAGE}:${DOCKER_TAG}
                             
-                            echo "✅ Déploiement production terminé!"
+                            echo " Déploiement production terminé!"
                         '
                     """
                 }
@@ -471,7 +447,7 @@ pipeline {
         // ====================================================================
         // STAGE 9: TESTS DE VALIDATION PRODUCTION
         // ====================================================================
-        // Vérifie que l'application en production fonctionne
+        // Vérifie que l application en production fonctionne
         // Identique aux tests staging mais sur le serveur de production
         // Exécuté sur: Agent Jenkins
         // Condition: UNIQUEMENT sur la branche 'main'
@@ -497,7 +473,7 @@ pipeline {
     // ========================================================================
     // POST - Actions exécutées après TOUS les stages
     // ========================================================================
-    // Ces actions s'exécutent quelle que soit l'issue de la pipeline
+    // Ces actions s exécutent quelle que soit l issue de la pipeline
     // (succès, échec, ou annulation)
     // ========================================================================
     post {
