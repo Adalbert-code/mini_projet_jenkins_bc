@@ -174,67 +174,6 @@ pipeline {
                 }
             }
         }
-        
-        stage('Déploiement Production') {
-            agent any
-            steps {
-                input message: 'Déployer en production?', ok: 'Déployer'
-                
-                sshagent(credentials: ['aws-ssh-prod']) {
-                    sh """
-                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${PROD_HOST} '
-                            echo "Verification de MySQL..."
-                            
-                            if docker ps | grep -q mysql-prod; then
-                                echo "MySQL deja en cours execution"
-                            else
-                                echo "Installation de MySQL..."
-                                docker rm mysql-prod 2>/dev/null || true
-                                
-                                docker run -d \\
-                                    --name mysql-prod \\
-                                    -p 3306:3306 \\
-                                    -e MYSQL_ROOT_PASSWORD=password \\
-                                    -e MYSQL_DATABASE=db_paymybuddy \\
-                                    --restart unless-stopped \\
-                                    mysql:8.0
-                                
-                                echo "Attente du demarrage de MySQL (30 secondes)..."
-                                sleep 30
-                                echo "MySQL installe et demarre"
-                            fi
-                            
-                            echo "Pull de l image Docker de l application..."
-                            docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
-                            
-                            echo "Arret de l ancien container applicatif..."
-                            docker stop paymybuddy-prod || true
-                            
-                            echo "Suppression de l ancien container..."
-                            docker rm paymybuddy-prod || true
-                            
-                            echo "Lancement du nouveau container..."
-                            docker run -d --name paymybuddy-prod -p 8080:8080 ${DOCKER_IMAGE}:${DOCKER_TAG}
-                            
-                            echo "Deploiement production termine!"
-                        '
-                    """
-                }
-            }
-        }
-        
-        stage('Tests de Validation Production') {
-            agent any
-            steps {
-                script {
-                    sleep(time: 30, unit: 'SECONDS')
-                    sh """
-                        curl -f http://${PROD_HOST}:8080/actuator/health || exit 1
-                    """
-                }
-            }
-        }
-    }
     
     post {
         always {
