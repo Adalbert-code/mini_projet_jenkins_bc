@@ -1,291 +1,461 @@
-/*
- * ============================================================================
- * PIPELINE CI/CD - PAYMYBUDDY APPLICATION
- * ============================================================================
- * 
- * Cette pipeline implémente un flux complet de CI/CD pour déployer une 
- * application Spring Boot sur AWS EC2 via Docker.
- * 
- * Flux: GitLab → Jenkins → Tests → SonarCloud → Docker → AWS (Staging/Prod)
- * 
- * Auteur: Christelle (adalbert-code)
- * Formation: EAZYTraining DevOps BootCamp
- * ============================================================================
- */
+// ============================================================================
+// PIPELINE CI/CD PAYMYBUDDY - VERSION COMPLÈTE AVEC STAGING + GITFLOW
+// ============================================================================
+// 
+// Description : Pipeline Jenkins pour automatiser les tests, l'analyse de code,
+//               le build, et le déploiement de l'application PayMyBuddy
+//
+// Environnements : 
+//   - Staging (EC2 54.160.137.198 - branche main uniquement)
+//   - Production (EC2 13.220.94.174 - branche main uniquement)
+//   - Tests (H2 in-memory - toutes branches)
+// 
+// GitFlow :
+//   - Branch main : Toutes les étapes (tests → staging → production)
+//   - Autres branches : Tests, SonarCloud, Build uniquement
+//
+// Auteur : Adalbert Nanda (Christelle)
+// Date : Décembre 2024
+// ============================================================================
 
 pipeline {
-    agent none
-    
+    agent any
+
+    // ========================================================================
+    // ENVIRONNEMENT : Variables globales
+    // ========================================================================
     environment {
-        // DOCKER CONFIGURATION
+        // --- Docker Hub ---
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
-        DOCKER_IMAGE = "adal2022/paymybuddy"
-        DOCKER_TAG = "${env.BUILD_NUMBER}"
+        DOCKER_IMAGE = 'adal2022/paymybuddy'
         
-        // SONARCLOUD CONFIGURATION
+        // --- SonarCloud ---
         SONAR_TOKEN = credentials('sonarcloud-token')
-        SONAR_PROJECT_KEY = "Adalbert-code_paymybuddy00"
-        SONAR_ORG = "adalbert-code"
+        SONAR_PROJECT_KEY = 'Adalbert-code_paymybuddy00'
+        SONAR_ORGANIZATION = 'adalbert-code'
         
-        // AWS EC2 CONFIGURATION
-        STAGING_HOST = "54.160.137.198"
-        PROD_HOST = "13.220.94.174"
-        SSH_USER = "ubuntu"
+        // --- AWS EC2 Staging ---
+        EC2_STAGING_IP = '54.160.137.198'
+        EC2_STAGING_USER = 'ubuntu'
         
-        // SLACK NOTIFICATION
+        // --- AWS EC2 Production ---
+        EC2_PROD_IP = '13.220.94.174'
+        EC2_PROD_USER = 'ubuntu'
+        
+        // --- Notifications ---
         SLACK_WEBHOOK = credentials('slack-webhook')
     }
-    
+
+    // ========================================================================
+    // STAGES : Pipeline CI/CD
+    // ========================================================================
     stages {
         
+        // ====================================================================
+        // STAGE 1 : CHECKOUT - Récupération du code (TOUTES BRANCHES)
+        // ====================================================================
         stage('Checkout') {
-            agent any
             steps {
-                git branch: 'main', 
-                    url: 'https://gitlab.com/Adalbert-code/paymybuddy00.git'
+                echo "🔄 [${env.BRANCH_NAME}] Récupération du code source..."
+                
+                checkout scm
+                
+                echo "✅ Code source récupéré depuis la branche ${env.BRANCH_NAME}"
             }
         }
-        
+
+        // ====================================================================
+        // STAGE 2 : TESTS AUTOMATISÉS (TOUTES BRANCHES)
+        // ====================================================================
         stage('Tests Automatisés') {
-            agent {
-                docker {
-                    image 'maven:3.9-amazoncorretto-17'
-                    args '-v /root/.m2:/root/.m2'
-                }
-            }
             steps {
-                sh 'mvn clean test'
+                echo "🧪 [${env.BRANCH_NAME}] Exécution des tests automatisés..."
+                
+                script {
+                    docker.image('maven:3.9-amazoncorretto-17').inside('-v /root/.m2:/root/.m2') {
+                        sh 'mvn clean test'
+                    }
+                }
+                
+                echo '✅ Tests terminés avec succès'
             }
+            
             post {
                 always {
                     junit '**/target/surefire-reports/*.xml'
+                    echo '📊 Rapports de tests publiés'
                 }
             }
         }
-        
+
+        // ====================================================================
+        // STAGE 3 : VÉRIFICATION QUALITÉ DU CODE (TOUTES BRANCHES)
+        // ====================================================================
         stage('Vérification Qualité du Code - SonarCloud') {
-            agent {
-                docker {
-                    image 'maven:3.9-amazoncorretto-17'
-                    args '-v /root/.m2:/root/.m2'
-                }
-            }
             steps {
-                sh """
-                    mvn sonar:sonar \
-                    -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                    -Dsonar.organization=${SONAR_ORG} \
-                    -Dsonar.host.url=https://sonarcloud.io \
-                    -Dsonar.login=${SONAR_TOKEN}
-                """
+                echo "🔍 [${env.BRANCH_NAME}] Analyse SonarCloud..."
+                
+                script {
+                    docker.image('maven:3.9-amazoncorretto-17').inside('-v /root/.m2:/root/.m2') {
+                        sh """
+                            mvn sonar:sonar \
+                                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                -Dsonar.organization=${SONAR_ORGANIZATION} \
+                                -Dsonar.host.url=https://sonarcloud.io \
+                                -Dsonar.login=${SONAR_TOKEN}
+                        """
+                    }
+                }
+                
+                echo '✅ Analyse SonarCloud terminée'
             }
         }
-        
+
+        // ====================================================================
+        // STAGE 4 : COMPILATION ET PACKAGING (TOUTES BRANCHES)
+        // ====================================================================
         stage('Compilation et Packaging') {
-            agent {
-                docker {
-                    image 'maven:3.9-amazoncorretto-17'
-                    args '-v /root/.m2:/root/.m2'
-                }
-            }
             steps {
-                sh 'mvn clean package -DskipTests'
+                echo "📦 [${env.BRANCH_NAME}] Compilation et packaging..."
+                
+                script {
+                    docker.image('maven:3.9-amazoncorretto-17').inside('-v /root/.m2:/root/.m2') {
+                        sh 'mvn clean package -DskipTests'
+                    }
+                }
+                
+                echo '✅ Application packagée avec succès'
             }
+            
             post {
                 success {
                     archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
                 }
             }
         }
-        
+
+        // ====================================================================
+        // STAGE 5 : BUILD ET PUSH DOCKER IMAGE (TOUTES BRANCHES)
+        // ====================================================================
         stage('Build et Push Docker Image') {
-            agent any
             steps {
+                echo "🐳 [${env.BRANCH_NAME}] Construction de l'image Docker..."
+                
                 script {
+                    def buildNumber = env.BUILD_NUMBER
+                    def branchTag = env.BRANCH_NAME.replaceAll('/', '-')
+                    
+                    // Build de l'image avec tag de branche
+                    sh "docker build -t ${DOCKER_IMAGE}:${branchTag}-${buildNumber} ."
+                    
+                    // Tag 'latest' uniquement pour la branche main
+                    if (env.BRANCH_NAME == 'main') {
+                        sh "docker tag ${DOCKER_IMAGE}:${branchTag}-${buildNumber} ${DOCKER_IMAGE}:latest"
+                    }
+                    
+                    echo '✅ Image Docker construite'
+                    
+                    // Push sur Docker Hub
                     sh """
-                        docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
-                        docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
+                        echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin
+                        docker push ${DOCKER_IMAGE}:${branchTag}-${buildNumber}
                     """
                     
-                    sh """
-                        echo \$DOCKERHUB_CREDENTIALS_PSW | docker login -u \$DOCKERHUB_CREDENTIALS_USR --password-stdin
-                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
-                        docker push ${DOCKER_IMAGE}:latest
-                        docker logout
-                    """
+                    if (env.BRANCH_NAME == 'main') {
+                        sh "docker push ${DOCKER_IMAGE}:latest"
+                    }
+                    
+                    sh "docker logout"
+                    
+                    echo "✅ Image Docker pushée : ${DOCKER_IMAGE}:${branchTag}-${buildNumber}"
                 }
             }
         }
-        
-        stage('Déploiement staging') {
-            agent any
+
+        // ====================================================================
+        // STAGE 6 : DÉPLOIEMENT STAGING (BRANCHE MAIN UNIQUEMENT)
+        // ====================================================================
+        stage('Déploiement Staging') {
+            when {
+                branch 'main'
+            }
             steps {
-                input message: 'Déployer en staging?', ok: 'Déployer'
+                echo '🚀 Déploiement en environnement de STAGING...'
                 
-                sshagent(credentials: ['aws-ssh-staging']) {
-                    sh """
-                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} '
-                            echo "Verification de MySQL..."
-                            
-                            if docker ps | grep -q mysql-staging; then
-                                echo "MySQL deja en cours execution"
-                            else
-                                echo "Installation de MySQL..."
-                                docker rm mysql-staging 2>/dev/null || true
+                sshagent(['aws-ec2-prod-ssh-key']) {
+                    script {
+                        def buildNumber = env.BUILD_NUMBER
+                        
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${EC2_STAGING_USER}@${EC2_STAGING_IP} '
+                                # ================================================
+                                # DÉPLOIEMENT STAGING - ENVIRONNEMENT PRÉ-PRODUCTION
+                                # ================================================
                                 
-                                docker run -d \\
-                                    --name mysql-staging \\
-                                    -p 3306:3306 \\
-                                    -e MYSQL_ROOT_PASSWORD=password \\
-                                    -e MYSQL_DATABASE=db_paymybuddy \\
-                                    --restart unless-stopped \\
-                                    mysql:8.0
+                                echo "=========================================="
+                                echo "  DÉPLOIEMENT STAGING - Build #${buildNumber}"
+                                echo "=========================================="
                                 
-                                echo "Attente du demarrage de MySQL (30 secondes)..."
-                                sleep 30
-                                echo "MySQL installe et demarre"
-                            fi
-                            
-                            echo "Pull de l image Docker de l application..."
-                            docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
-                            
-                            echo "Arret de l ancien container applicatif..."
-                            docker stop paymybuddy-staging || true
-                            
-                            echo "Suppression de l ancien container..."
-                            docker rm paymybuddy-staging || true
-                            
-                            echo "Lancement du nouveau container avec configuration MySQL..."
-                            docker run -d --name paymybuddy-staging -p 8080:8080 \\
-                                -e SPRING_DATASOURCE_URL=jdbc:mysql://172.17.0.1:3306/db_paymybuddy \\
-                                -e SPRING_DATASOURCE_USERNAME=root \\
-                                -e SPRING_DATASOURCE_PASSWORD=password \\
-                                ${DOCKER_IMAGE}:${DOCKER_TAG}
-                            
-                            echo "Deploiement production termine!"
-                        '
-                    """
+                                # 1. Vérification et installation MySQL
+                                echo "📦 Vérification de MySQL..."
+                                if docker ps | grep -q mysql-staging; then
+                                    echo "✅ MySQL déjà en cours d execution"
+                                else
+                                    echo "📥 Installation de MySQL Staging..."
+                                    docker rm mysql-staging 2>/dev/null || true
+                                    
+                                    docker run -d \\
+                                        --name mysql-staging \\
+                                        -p 3306:3306 \\
+                                        -e MYSQL_ROOT_PASSWORD=password \\
+                                        -e MYSQL_DATABASE=db_paymybuddy \\
+                                        --restart unless-stopped \\
+                                        mysql:8.0
+                                    
+                                    echo "⏳ Attente du démarrage de MySQL (30s)..."
+                                    sleep 30
+                                    echo "✅ MySQL Staging installé et démarré"
+                                fi
+                                
+                                # 2. Pull de l image Docker
+                                echo "🐳 Pull de l image Docker..."
+                                docker pull ${DOCKER_IMAGE}:main-${buildNumber}
+                                
+                                # 3. Arrêt de l ancien container
+                                echo "🛑 Arrêt de l ancien container staging..."
+                                docker stop paymybuddy-staging 2>/dev/null || true
+                                docker rm paymybuddy-staging 2>/dev/null || true
+                                
+                                # 4. Démarrage du nouveau container
+                                echo "🚀 Lancement du nouveau container Staging..."
+                                docker run -d --name paymybuddy-staging -p 8080:8080 \\
+                                    -e SPRING_DATASOURCE_URL=jdbc:mysql://172.17.0.1:3306/db_paymybuddy \\
+                                    -e SPRING_DATASOURCE_USERNAME=root \\
+                                    -e SPRING_DATASOURCE_PASSWORD=password \\
+                                    -e SPRING_PROFILES_ACTIVE=staging \\
+                                    ${DOCKER_IMAGE}:main-${buildNumber}
+                                
+                                echo "✅ Déploiement Staging terminé !"
+                                echo "🌐 URL: http://54.160.137.198:8080"
+                            '
+                        """
+                    }
                 }
+                
+                echo '✅ Application déployée en STAGING'
             }
         }
-        
+
+        // ====================================================================
+        // STAGE 7 : TESTS DE VALIDATION STAGING (BRANCHE MAIN UNIQUEMENT)
+        // ====================================================================
         stage('Tests de Validation Staging') {
-            agent any
-            steps {
-                script {
-                    sleep(time: 30, unit: 'SECONDS')
-                    sh """
-                        curl -f http://${PROD_HOST}:8080/actuator/health || exit 1
-                    """
-                }
+            when {
+                branch 'main'
             }
-        }
-    
-		
-        stage('Déploiement Production') {
-            agent any
             steps {
-                input message: 'Déployer en production?', ok: 'Déployer'
+                echo '🏥 Vérification de la santé de l application Staging...'
                 
-                sshagent(credentials: ['aws-ssh-prod']) {
-                    sh """
-                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${PROD_HOST} '
-                            echo "Verification de MySQL..."
-                            
-                            if docker ps | grep -q mysql-prod; then
-                                echo "MySQL deja en cours execution"
-                            else
-                                echo "Installation de MySQL..."
-                                docker rm mysql-prod 2>/dev/null || true
-                                
-                                docker run -d \\
-                                    --name mysql-prod \\
-                                    -p 3306:3306 \\
-                                    -e MYSQL_ROOT_PASSWORD=password \\
-                                    -e MYSQL_DATABASE=db_paymybuddy \\
-                                    --restart unless-stopped \\
-                                    mysql:8.0
-                                
-                                echo "Attente du demarrage de MySQL (30 secondes)..."
-                                sleep 30
-                                echo "MySQL installe et demarre"
-                            fi
-                            
-                            echo "Pull de l image Docker de l application..."
-                            docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
-                            
-                            echo "Arret de l ancien container applicatif..."
-                            docker stop paymybuddy-prod || true
-                            
-                            echo "Suppression de l ancien container..."
-                            docker rm paymybuddy-prod || true
-                            
-                            echo "Lancement du nouveau container avec configuration MySQL..."
-                            docker run -d --name paymybuddy-prod -p 8080:8080 \\
-                                -e SPRING_DATASOURCE_URL=jdbc:mysql://172.17.0.1:3306/db_paymybuddy \\
-                                -e SPRING_DATASOURCE_USERNAME=root \\
-                                -e SPRING_DATASOURCE_PASSWORD=password \\
-                                ${DOCKER_IMAGE}:${DOCKER_TAG}
-                            
-                            echo "Deploiement production termine!"
-                        '
-                    """
+                script {
+                    echo 'Attente du démarrage de l application (30s)...'
+                    sleep 30
+                    
+                    // Test du health check
+                    def healthCheckResult = sh(
+                        script: "curl -f http://54.160.137.198:8080/actuator/health",
+                        returnStatus: true
+                    )
+                    
+                    if (healthCheckResult == 0) {
+                        echo '✅ Application Staging en bonne santé'
+                    } else {
+                        error '❌ Le health check Staging a échoué'
+                    }
                 }
             }
         }
-        
-        stage('Tests de Validation Production') {
-            agent any
+
+        // ====================================================================
+        // STAGE 8 : DÉPLOIEMENT PRODUCTION (BRANCHE MAIN UNIQUEMENT)
+        // ====================================================================
+        stage('Déploiement Production') {
+            when {
+                branch 'main'
+            }
             steps {
+                echo '🚀 Déploiement en environnement de PRODUCTION...'
+                
+                // Validation manuelle avant prod
+                input message: '⚠️  Déployer en PRODUCTION ?', ok: 'Déployer'
+                
+                sshagent(['aws-ec2-prod-ssh-key']) {
+                    script {
+                        def buildNumber = env.BUILD_NUMBER
+                        
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${EC2_PROD_USER}@${EC2_PROD_IP} '
+                                # ================================================
+                                # DÉPLOIEMENT PRODUCTION
+                                # ================================================
+                                
+                                echo "=========================================="
+                                echo "  DÉPLOIEMENT PRODUCTION - Build #${buildNumber}"
+                                echo "=========================================="
+                                
+                                # 1. Vérification MySQL Production
+                                echo "📦 Vérification de MySQL Production..."
+                                if docker ps | grep -q mysql-prod; then
+                                    echo "✅ MySQL Production déjà en cours d execution"
+                                else
+                                    echo "📥 Installation de MySQL Production..."
+                                    docker rm mysql-prod 2>/dev/null || true
+                                    
+                                    docker run -d \\
+                                        --name mysql-prod \\
+                                        -p 3306:3306 \\
+                                        -e MYSQL_ROOT_PASSWORD=password \\
+                                        -e MYSQL_DATABASE=db_paymybuddy \\
+                                        --restart unless-stopped \\
+                                        mysql:8.0
+                                    
+                                    echo "⏳ Attente du démarrage de MySQL (30s)..."
+                                    sleep 30
+                                    echo "✅ MySQL Production installé"
+                                fi
+                                
+                                # 2. Pull de l image Docker
+                                echo "🐳 Pull de l image Docker Production..."
+                                docker pull ${DOCKER_IMAGE}:main-${buildNumber}
+                                
+                                # 3. Arrêt de l ancien container
+                                echo "🛑 Arrêt de l ancien container production..."
+                                docker stop paymybuddy-prod 2>/dev/null || true
+                                docker rm paymybuddy-prod 2>/dev/null || true
+                                
+                                # 4. Démarrage du nouveau container
+                                echo "🚀 Lancement du nouveau container Production..."
+                                docker run -d --name paymybuddy-prod -p 8080:8080 \\
+                                    -e SPRING_DATASOURCE_URL=jdbc:mysql://172.17.0.1:3306/db_paymybuddy \\
+                                    -e SPRING_DATASOURCE_USERNAME=root \\
+                                    -e SPRING_DATASOURCE_PASSWORD=password \\
+                                    -e SPRING_PROFILES_ACTIVE=production \\
+                                    ${DOCKER_IMAGE}:main-${buildNumber}
+                                
+                                echo "✅ Déploiement Production terminé !"
+                                echo "🌐 URL: http://13.220.94.174:8080"
+                            '
+                        """
+                    }
+                }
+                
+                echo '✅ Application déployée en PRODUCTION'
+            }
+        }
+
+        // ====================================================================
+        // STAGE 9 : TESTS DE VALIDATION PRODUCTION (BRANCHE MAIN UNIQUEMENT)
+        // ====================================================================
+        stage('Tests de Validation Production') {
+            when {
+                branch 'main'
+            }
+            steps {
+                echo '🏥 Vérification de la santé de l application Production...'
+                
                 script {
-                    sleep(time: 30, unit: 'SECONDS')
-                    sh """
-                        curl -f http://${PROD_HOST}:8080/actuator/health || exit 1
-                    """
+                    echo 'Attente du démarrage de l application (30s)...'
+                    sleep 30
+                    
+                    // Test du health check production
+                    def healthCheckResult = sh(
+                        script: "curl -f http://13.220.94.174:8080/actuator/health",
+                        returnStatus: true
+                    )
+                    
+                    if (healthCheckResult == 0) {
+                        echo '✅ Application Production en bonne santé'
+                    } else {
+                        error '❌ Le health check Production a échoué'
+                    }
                 }
             }
         }
     }
-    
+
+    // ========================================================================
+    // POST : Actions après la pipeline
+    // ========================================================================
     post {
-        always {
-            node('') {
-                script {
-                    def status = currentBuild.result ?: 'SUCCESS'
-                    def color = status == 'SUCCESS' ? 'good' : 'danger'
-                    def emoji = status == 'SUCCESS' ? ':white_check_mark:' : ':x:'
-                    
-                    def message = """
-                        ${emoji} *Pipeline ${status}*
-                        Job: ${env.JOB_NAME}
-                        Build: #${env.BUILD_NUMBER}
-                        Duration: ${currentBuild.durationString}
+        success {
+            script {
+                def duration = currentBuild.durationString.replace(' and counting', '')
+                def message = ""
+                
+                if (env.BRANCH_NAME == 'main') {
+                    message = """
+:white_check_mark: *Pipeline SUCCESS - MAIN*
+Job: ${env.JOB_NAME}
+Build: #${env.BUILD_NUMBER}
+Branch: ${env.BRANCH_NAME}
+Duration: ${duration}
+
+:rocket: *Déployé en:*
+- Staging: http://54.160.137.198:8080
+- Production: http://13.220.94.174:8080
                     """
-                    
-                    sh """
-                        curl -X POST ${SLACK_WEBHOOK} \
+                } else {
+                    message = """
+:white_check_mark: *Pipeline SUCCESS*
+Job: ${env.JOB_NAME}
+Build: #${env.BUILD_NUMBER}
+Branch: ${env.BRANCH_NAME}
+Duration: ${duration}
+
+:package: Tests, SonarCloud et Build réussis
+                    """
+                }
+                
+                sh """
+                    curl -X POST ${SLACK_WEBHOOK} \
                         -H 'Content-Type: application/json' \
                         -d '{
                             "attachments": [{
-                                "color": "${color}",
+                                "color": "good",
                                 "text": "${message}",
                                 "footer": "Jenkins CI/CD Pipeline",
-                                "ts": ${currentBuild.startTimeInMillis / 1000}
+                                "ts": ${System.currentTimeMillis() / 1000}
                             }]
                         }'
-                    """
-                }
+                """
             }
-        }
-        
-        success {
+            
             echo '✅ Pipeline exécutée avec succès!'
-            echo '📦 Application déployée et validée'
         }
         
         failure {
+            script {
+                def duration = currentBuild.durationString.replace(' and counting', '')
+                
+                sh """
+                    curl -X POST ${SLACK_WEBHOOK} \
+                        -H 'Content-Type: application/json' \
+                        -d '{
+                            "attachments": [{
+                                "color": "danger",
+                                "text": ":x: *Pipeline FAILURE*\\nJob: ${env.JOB_NAME}\\nBuild: #${env.BUILD_NUMBER}\\nBranch: ${env.BRANCH_NAME}\\nDuration: ${duration}",
+                                "footer": "Jenkins CI/CD Pipeline",
+                                "ts": ${System.currentTimeMillis() / 1000}
+                            }]
+                        }'
+                """
+            }
+            
             echo '❌ Pipeline échouée!'
-            echo '🔍 Vérifiez les logs pour identifier le problème'
+        }
+        
+        always {
+            cleanWs()
+            echo '🧹 Workspace nettoyé'
         }
     }
 }
