@@ -143,7 +143,10 @@ pipeline {
                 
                 script {
                     def buildNumber = env.BUILD_NUMBER
-                    def branchTag = env.BRANCH_NAME.replaceAll('/', '-')
+                    // def branchTag = env.BRANCH_NAME.replaceAll('/', '-')
+					// Vérifier et nettoyer le nom de branche
+                    def branchTag = env.BRANCH_NAME ?: 'unknown'
+                    branchTag = branchTag.replaceFirst('^origin/', '').replaceAll('/', '-')
                     
                     // Build de l'image avec tag de branche
                     sh "docker build -t ${DOCKER_IMAGE}:${branchTag}-${buildNumber} ."
