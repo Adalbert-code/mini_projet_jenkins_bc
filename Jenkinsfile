@@ -28,7 +28,7 @@ pipeline {
         SONAR_ORG = "adalbert-code"
         
         // AWS EC2 CONFIGURATION
-        STAGING_HOST = "98.94.13.26"
+        STAGING_HOST = "54.160.137.198"
         PROD_HOST = "13.220.94.174"
         SSH_USER = "ubuntu"
         
@@ -117,6 +117,71 @@ pipeline {
             }
         }
         
+        stage('Déploiement staging') {
+            agent any
+            steps {
+                input message: 'Déployer en staging?', ok: 'Déployer'
+                
+                sshagent(credentials: ['aws-ssh-staging']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${STAGING_HOST} '
+                            echo "Verification de MySQL..."
+                            
+                            if docker ps | grep -q mysql-staging; then
+                                echo "MySQL deja en cours execution"
+                            else
+                                echo "Installation de MySQL..."
+                                docker rm mysql-staging 2>/dev/null || true
+                                
+                                docker run -d \\
+                                    --name mysql-staging \\
+                                    -p 3306:3306 \\
+                                    -e MYSQL_ROOT_PASSWORD=password \\
+                                    -e MYSQL_DATABASE=db_paymybuddy \\
+                                    --restart unless-stopped \\
+                                    mysql:8.0
+                                
+                                echo "Attente du demarrage de MySQL (30 secondes)..."
+                                sleep 30
+                                echo "MySQL installe et demarre"
+                            fi
+                            
+                            echo "Pull de l image Docker de l application..."
+                            docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
+                            
+                            echo "Arret de l ancien container applicatif..."
+                            docker stop paymybuddy-staging || true
+                            
+                            echo "Suppression de l ancien container..."
+                            docker rm paymybuddy-staging || true
+                            
+                            echo "Lancement du nouveau container avec configuration MySQL..."
+                            docker run -d --name paymybuddy-staging -p 8080:8080 \\
+                                -e SPRING_DATASOURCE_URL=jdbc:mysql://172.17.0.1:3306/db_paymybuddy \\
+                                -e SPRING_DATASOURCE_USERNAME=root \\
+                                -e SPRING_DATASOURCE_PASSWORD=password \\
+                                ${DOCKER_IMAGE}:${DOCKER_TAG}
+                            
+                            echo "Deploiement production termine!"
+                        '
+                    """
+                }
+            }
+        }
+        
+        stage('Tests de Validation Staging') {
+            agent any
+            steps {
+                script {
+                    sleep(time: 30, unit: 'SECONDS')
+                    sh """
+                        curl -f http://${PROD_HOST}:8080/actuator/health || exit 1
+                    """
+                }
+            }
+        }
+    }
+		
         stage('Déploiement Production') {
             agent any
             steps {
