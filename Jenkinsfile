@@ -180,7 +180,7 @@ pipeline {
                 }
             }
         }
-    }
+    
 		
         stage('Déploiement Production') {
             agent any
