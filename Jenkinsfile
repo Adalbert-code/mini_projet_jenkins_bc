@@ -28,7 +28,7 @@ pipeline {
         SONAR_ORG = "adalbert-code"
         
         // AWS EC2 CONFIGURATION
-        STAGING_HOST = "54.221.38.236"
+        STAGING_HOST = "3.208.15.55"
         PROD_HOST = "34.227.52.210"
         SSH_USER = "ubuntu"
         
@@ -116,6 +116,7 @@ pipeline {
                 }
             }
         }
+        
         stage('Déploiement Production') {
             agent any
             steps {
@@ -154,8 +155,12 @@ pipeline {
                             echo "Suppression de l ancien container..."
                             docker rm paymybuddy-prod || true
                             
-                            echo "Lancement du nouveau container..."
-                            docker run -d --name paymybuddy-prod -p 8080:8080 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                            echo "Lancement du nouveau container avec configuration MySQL..."
+                            docker run -d --name paymybuddy-prod -p 8080:8080 \\
+                                -e SPRING_DATASOURCE_URL=jdbc:mysql://172.17.0.1:3306/db_paymybuddy \\
+                                -e SPRING_DATASOURCE_USERNAME=root \\
+                                -e SPRING_DATASOURCE_PASSWORD=password \\
+                                ${DOCKER_IMAGE}:${DOCKER_TAG}
                             
                             echo "Deploiement production termine!"
                         '
