@@ -28,8 +28,8 @@ pipeline {
         SONAR_ORG = "adalbert-code"
         
         // AWS EC2 CONFIGURATION
-        STAGING_HOST = "3.208.15.55"
-        PROD_HOST = "34.227.52.210"
+        STAGING_HOST = "98.94.13.26"
+        PROD_HOST = "13.220.94.174"
         SSH_USER = "ubuntu"
         
         // SLACK NOTIFICATION
