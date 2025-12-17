@@ -192,7 +192,11 @@ pipeline {
         // ====================================================================
         stage('Déploiement Staging') {
             when {
-                branch 'main'
+                expression {
+                    def branchName = env.BRANCH_NAME ?: env.GIT_BRANCH ?: ''
+                    branchName = branchName.replaceAll('origin/', '')
+                    return branchName == 'main'
+                }
             }
             steps {
                 echo '🚀 Déploiement en environnement de STAGING...'
@@ -200,18 +204,17 @@ pipeline {
                 sshagent(['aws-ec2-prod-ssh-key']) {
                     script {
                         def buildNumber = env.BUILD_NUMBER
+                        def branchName = env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'main'
+                        branchName = branchName.replaceAll('origin/', '')
+                        def branchTag = branchName.replaceAll('/', '-')
                         
                         sh """
                             ssh -o StrictHostKeyChecking=no ${EC2_STAGING_USER}@${EC2_STAGING_IP} '
-                                # ================================================
-                                # DÉPLOIEMENT STAGING - ENVIRONNEMENT PRÉ-PRODUCTION
-                                # ================================================
-                                
                                 echo "=========================================="
                                 echo "  DÉPLOIEMENT STAGING - Build #${buildNumber}"
                                 echo "=========================================="
                                 
-                                # 1. Vérification et installation MySQL
+                                # 1. Vérification MySQL
                                 echo "📦 Vérification de MySQL..."
                                 if docker ps | grep -q mysql-staging; then
                                     echo "✅ MySQL déjà en cours d execution"
@@ -229,26 +232,26 @@ pipeline {
                                     
                                     echo "⏳ Attente du démarrage de MySQL (30s)..."
                                     sleep 30
-                                    echo "✅ MySQL Staging installé et démarré"
+                                    echo "✅ MySQL Staging installé"
                                 fi
                                 
-                                # 2. Pull de l image Docker
+                                # 2. Pull image Docker
                                 echo "🐳 Pull de l image Docker..."
-                                docker pull ${DOCKER_IMAGE}:main-${buildNumber}
+                                docker pull ${DOCKER_IMAGE}:${branchTag}-${buildNumber}
                                 
-                                # 3. Arrêt de l ancien container
+                                # 3. Arrêt ancien container
                                 echo "🛑 Arrêt de l ancien container staging..."
                                 docker stop paymybuddy-staging 2>/dev/null || true
                                 docker rm paymybuddy-staging 2>/dev/null || true
                                 
-                                # 4. Démarrage du nouveau container
+                                # 4. Démarrage nouveau container
                                 echo "🚀 Lancement du nouveau container Staging..."
                                 docker run -d --name paymybuddy-staging -p 8080:8080 \\
                                     -e SPRING_DATASOURCE_URL=jdbc:mysql://172.17.0.1:3306/db_paymybuddy \\
                                     -e SPRING_DATASOURCE_USERNAME=root \\
                                     -e SPRING_DATASOURCE_PASSWORD=password \\
                                     -e SPRING_PROFILES_ACTIVE=staging \\
-                                    ${DOCKER_IMAGE}:main-${buildNumber}
+                                    ${DOCKER_IMAGE}:${branchTag}-${buildNumber}
                                 
                                 echo "✅ Déploiement Staging terminé !"
                                 echo "🌐 URL: http://54.160.137.198:8080"
@@ -266,7 +269,11 @@ pipeline {
         // ====================================================================
         stage('Tests de Validation Staging') {
             when {
-                branch 'main'
+                expression {
+                    def branchName = env.BRANCH_NAME ?: env.GIT_BRANCH ?: ''
+                    branchName = branchName.replaceAll('origin/', '')
+                    return branchName == 'main'
+                }
             }
             steps {
                 echo '🏥 Vérification de la santé de l application Staging...'
@@ -275,7 +282,6 @@ pipeline {
                     echo 'Attente du démarrage de l application (30s)...'
                     sleep 30
                     
-                    // Test du health check
                     def healthCheckResult = sh(
                         script: "curl -f http://54.160.137.198:8080/actuator/health",
                         returnStatus: true
