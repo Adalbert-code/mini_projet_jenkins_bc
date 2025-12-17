@@ -139,21 +139,31 @@ pipeline {
         // ====================================================================
         stage('Build et Push Docker Image') {
             steps {
-                echo "🐳 [${env.BRANCH_NAME}] Construction de l'image Docker..."
+                echo "🐳 Construction de l'image Docker..."
                 
                 script {
                     def buildNumber = env.BUILD_NUMBER
-                    // def branchTag = env.BRANCH_NAME.replaceAll('/', '-')
-					// Vérifier et nettoyer le nom de branche
-                    def branchTag = env.BRANCH_NAME ?: 'unknown'
-                    branchTag = branchTag.replaceFirst('^origin/', '').replaceAll('/', '-')
                     
-                    // Build de l'image avec tag de branche
+                    // Détection robuste de la branche
+                    // Priorité : BRANCH_NAME → GIT_BRANCH → fallback 'main'
+                    def branchName = env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'main'
+                    
+                    // Nettoie 'origin/' si présent (GIT_BRANCH contient souvent 'origin/main')
+                    branchName = branchName.replaceAll('origin/', '')
+                    
+                    // Remplace '/' par '-' pour un tag Docker valide
+                    def branchTag = branchName.replaceAll('/', '-')
+                    
+                    echo "📌 Branch détectée: ${branchName}"
+                    echo "🏷️  Tag Docker: ${branchTag}-${buildNumber}"
+                    
+                    // Build de l'image Docker avec tag de branche
                     sh "docker build -t ${DOCKER_IMAGE}:${branchTag}-${buildNumber} ."
                     
                     // Tag 'latest' uniquement pour la branche main
-                    if (env.BRANCH_NAME == 'main') {
+                    if (branchName == 'main') {
                         sh "docker tag ${DOCKER_IMAGE}:${branchTag}-${buildNumber} ${DOCKER_IMAGE}:latest"
+                        echo "🏷️  Tag 'latest' ajouté"
                     }
                     
                     echo '✅ Image Docker construite'
@@ -164,8 +174,10 @@ pipeline {
                         docker push ${DOCKER_IMAGE}:${branchTag}-${buildNumber}
                     """
                     
-                    if (env.BRANCH_NAME == 'main') {
+                    // Push 'latest' si branche main
+                    if (branchName == 'main') {
                         sh "docker push ${DOCKER_IMAGE}:latest"
+                        echo "✅ Image 'latest' pushée"
                     }
                     
                     sh "docker logout"
