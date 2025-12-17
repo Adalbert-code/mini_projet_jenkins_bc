@@ -301,29 +301,32 @@ pipeline {
         // ====================================================================
         stage('Déploiement Production') {
             when {
-                branch 'main'
+                expression {
+                    def branchName = env.BRANCH_NAME ?: env.GIT_BRANCH ?: ''
+                    branchName = branchName.replaceAll('origin/', '')
+                    return branchName == 'main'
+                }
             }
             steps {
                 echo '🚀 Déploiement en environnement de PRODUCTION...'
                 
-                // Validation manuelle avant prod
+                // Validation manuelle
                 input message: '⚠️  Déployer en PRODUCTION ?', ok: 'Déployer'
                 
                 sshagent(['aws-ec2-prod-ssh-key']) {
                     script {
                         def buildNumber = env.BUILD_NUMBER
+                        def branchName = env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'main'
+                        branchName = branchName.replaceAll('origin/', '')
+                        def branchTag = branchName.replaceAll('/', '-')
                         
                         sh """
                             ssh -o StrictHostKeyChecking=no ${EC2_PROD_USER}@${EC2_PROD_IP} '
-                                # ================================================
-                                # DÉPLOIEMENT PRODUCTION
-                                # ================================================
-                                
                                 echo "=========================================="
                                 echo "  DÉPLOIEMENT PRODUCTION - Build #${buildNumber}"
                                 echo "=========================================="
                                 
-                                # 1. Vérification MySQL Production
+                                # 1. Vérification MySQL
                                 echo "📦 Vérification de MySQL Production..."
                                 if docker ps | grep -q mysql-prod; then
                                     echo "✅ MySQL Production déjà en cours d execution"
@@ -344,23 +347,23 @@ pipeline {
                                     echo "✅ MySQL Production installé"
                                 fi
                                 
-                                # 2. Pull de l image Docker
+                                # 2. Pull image Docker
                                 echo "🐳 Pull de l image Docker Production..."
-                                docker pull ${DOCKER_IMAGE}:main-${buildNumber}
+                                docker pull ${DOCKER_IMAGE}:${branchTag}-${buildNumber}
                                 
-                                # 3. Arrêt de l ancien container
+                                # 3. Arrêt ancien container
                                 echo "🛑 Arrêt de l ancien container production..."
                                 docker stop paymybuddy-prod 2>/dev/null || true
                                 docker rm paymybuddy-prod 2>/dev/null || true
                                 
-                                # 4. Démarrage du nouveau container
+                                # 4. Démarrage nouveau container
                                 echo "🚀 Lancement du nouveau container Production..."
                                 docker run -d --name paymybuddy-prod -p 8080:8080 \\
                                     -e SPRING_DATASOURCE_URL=jdbc:mysql://172.17.0.1:3306/db_paymybuddy \\
                                     -e SPRING_DATASOURCE_USERNAME=root \\
                                     -e SPRING_DATASOURCE_PASSWORD=password \\
                                     -e SPRING_PROFILES_ACTIVE=production \\
-                                    ${DOCKER_IMAGE}:main-${buildNumber}
+                                    ${DOCKER_IMAGE}:${branchTag}-${buildNumber}
                                 
                                 echo "✅ Déploiement Production terminé !"
                                 echo "🌐 URL: http://13.220.94.174:8080"
@@ -372,13 +375,17 @@ pipeline {
                 echo '✅ Application déployée en PRODUCTION'
             }
         }
-
+        
         // ====================================================================
         // STAGE 9 : TESTS DE VALIDATION PRODUCTION (BRANCHE MAIN UNIQUEMENT)
         // ====================================================================
         stage('Tests de Validation Production') {
             when {
-                branch 'main'
+                expression {
+                    def branchName = env.BRANCH_NAME ?: env.GIT_BRANCH ?: ''
+                    branchName = branchName.replaceAll('origin/', '')
+                    return branchName == 'main'
+                }
             }
             steps {
                 echo '🏥 Vérification de la santé de l application Production...'
@@ -387,7 +394,6 @@ pipeline {
                     echo 'Attente du démarrage de l application (30s)...'
                     sleep 30
                     
-                    // Test du health check production
                     def healthCheckResult = sh(
                         script: "curl -f http://13.220.94.174:8080/actuator/health",
                         returnStatus: true
@@ -401,7 +407,6 @@ pipeline {
                 }
             }
         }
-    }
 
     // ========================================================================
     // POST : Actions après la pipeline
