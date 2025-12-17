@@ -201,7 +201,7 @@ pipeline {
             steps {
                 echo '🚀 Déploiement en environnement de STAGING...'
                 
-                sshagent(['aws-ec2-prod-ssh-key']) {
+                sshagent(['aws-ssh-staging']) {
                     script {
                         def buildNumber = env.BUILD_NUMBER
                         def branchName = env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'main'
@@ -313,7 +313,7 @@ pipeline {
                 // Validation manuelle
                 input message: '⚠️  Déployer en PRODUCTION ?', ok: 'Déployer'
                 
-                sshagent(['aws-ec2-prod-ssh-key']) {
+                sshagent(['aws-ssh-prod']) {
                     script {
                         def buildNumber = env.BUILD_NUMBER
                         def branchName = env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'main'
