@@ -407,6 +407,7 @@ pipeline {
                 }
             }
         }
+	}
 
     // ========================================================================
     // POST : Actions après la pipeline
@@ -484,5 +485,4 @@ Duration: ${duration}
             echo '🧹 Workspace nettoyé'
         }
     }
-  }
 }
