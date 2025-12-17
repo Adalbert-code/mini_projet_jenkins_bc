@@ -484,4 +484,5 @@ Duration: ${duration}
             echo '🧹 Workspace nettoyé'
         }
     }
+  }
 }
