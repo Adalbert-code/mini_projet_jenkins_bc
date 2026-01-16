@@ -94,19 +94,19 @@ pipeline {
         stage('Vérification Qualité du Code - SonarCloud') {
             steps {
                 echo "🔍 [${env.BRANCH_NAME}] Analyse SonarCloud..."
-                
+
                 script {
-                    docker.image('maven:3.9-amazoncorretto-17').inside('-v /root/.m2:/root/.m2') {
+                    docker.image('maven:3.9-amazoncorretto-17').inside('-v /root/.m2:/root/.m2 --dns 8.8.8.8 --dns 8.8.4.4') {
                         sh """
                             mvn sonar:sonar \
                                 -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                                 -Dsonar.organization=${SONAR_ORGANIZATION} \
                                 -Dsonar.host.url=https://sonarcloud.io \
-                                -Dsonar.login=${SONAR_TOKEN}
+                                -Dsonar.login=\$SONAR_TOKEN
                         """
                     }
                 }
-                
+
                 echo '✅ Analyse SonarCloud terminée'
             }
         }
