@@ -1,249 +1,373 @@
 # Pipeline CI/CD Jenkins - PayMyBuddy
 
-## 📋 Vue d'ensemble
+## Description du Projet
 
-Ce projet implémente une pipeline CI/CD complète avec Jenkins pour déployer l'application PayMyBuddy sur AWS EC2.
+Ce projet implémente une **pipeline CI/CD complète** avec Jenkins pour l'application **PayMyBuddy**, une application Spring Boot de transfert d'argent entre amis. La pipeline automatise l'intégralité du cycle de vie du logiciel : tests, analyse de qualité, build, containerisation et déploiement sur AWS EC2.
 
-### Architecture de la Pipeline
+**Auteur :** Adalbert Nanda (Christelle)
+**Formation :** EAZYTraining DevOps BootCamp
+**Date :** Janvier 2026
+
+---
+
+## Architecture Globale
 
 ```
-GitLab → Jenkins → Docker Build → DockerHub → AWS EC2 (Staging/Production)
-                ↓
-         SonarCloud (Qualité du code)
-                ↓
-         Slack (Notifications)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         PIPELINE CI/CD PAYMYBUDDY                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  ┌──────────┐      ┌──────────┐      ┌──────────┐      ┌──────────────────┐
+  │  GitHub  │─────>│ Jenkins  │─────>│ Docker   │─────>│ AWS EC2          │
+  │  (SCM)   │      │ (CI/CD)  │      │ Hub      │      │ Staging & Prod   │
+  └──────────┘      └────┬─────┘      └──────────┘      └──────────────────┘
+                         │
+                    ┌────┴────┐
+                    │         │
+               ┌────▼───┐ ┌───▼────┐
+               │ Sonar  │ │ Slack  │
+               │ Cloud  │ │ Notif  │
+               └────────┘ └────────┘
 ```
 
-## 🔧 Prérequis
+### Flux de la Pipeline
 
-### 1. Jenkins Plugins Installés
-- ✅ Pipeline
-- ✅ Docker Pipeline
-- ✅ GitLab
-- ✅ SonarQube Scanner
-- ✅ Slack Notification
-- ✅ SSH Agent
+```
+┌─────────┐   ┌───────┐   ┌─────────┐   ┌─────────┐   ┌───────┐   ┌────────┐
+│Checkout │──>│ Tests │──>│ Sonar   │──>│ Package │──>│ Build │──>│ Push   │
+│  SCM    │   │ JUnit │   │ Cloud   │   │ Maven   │   │Docker │   │DockerHub│
+└─────────┘   └───────┘   └─────────┘   └─────────┘   └───────┘   └────────┘
+                                                                       │
+                          ┌────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    DÉPLOIEMENT (Branche main uniquement)                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐  │
+│  │ Deploy   │──>│ Health   │──>│ Approval │──>│ Deploy   │──>│ Health   │  │
+│  │ Staging  │   │ Check    │   │ Manuel   │   │ Prod     │   │ Check    │  │
+│  └──────────┘   └──────────┘   └──────────┘   └──────────┘   └──────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
-### 2. Credentials Configurés dans Jenkins
+---
 
-| ID                      | Type                          | Description            |
-|-------------------------|-------------------------------|------------------------|
-| `dockerhub-credentials` | Username with password        | DockerHub (adal2022)   |
-| `sonarcloud-token`      | Secret text                   | Token SonarCloud       |
-| `slack-webhook`         | Secret text                   | Webhook URL Slack      |
-| `aws-ssh-staging`       | SSH Username with private key | Clé SSH EC2 Staging    |
-| `aws-ssh-prod`          | SSH Username with private key | Clé SSH EC2 Production |
+## Technologies Utilisées
 
-### 3. Ressources AWS
+| Catégorie | Technologie | Version | Utilisation |
+|-----------|-------------|---------|-------------|
+| **Application** | Java | 17 | Runtime |
+| | Spring Boot | 3.x | Framework |
+| | Maven | 3.9 | Build tool |
+| **CI/CD** | Jenkins | 2.520 | Orchestration |
+| | Docker | Latest | Containerisation |
+| | Docker Hub | - | Registry |
+| **Qualité** | SonarCloud | - | Analyse de code |
+| | JUnit | 5 | Tests unitaires |
+| **Infrastructure** | AWS EC2 | t2.micro | Serveurs |
+| | Vagrant | - | VM locale Jenkins |
+| **Notifications** | Slack | - | Alertes |
 
-**Instance Staging:**
-- IP: `3.208.15.55`
-- Type: t2.micro
-- OS: Ubuntu
-- User: ubuntu
+---
 
-**Instance Production:**
-- IP: `34.227.52.210`
-- Type: t2.micro
-- OS: Ubuntu
-- User: ubuntu
+## Environnements de Déploiement
 
-**Sécurité Groups:**
-- Port 22 (SSH) - ouvert depuis IP Jenkins
-- Port 8080 (Application) - ouvert pour tests
+| Environnement | IP Publique | Port | Usage |
+|---------------|-------------|------|-------|
+| **Staging** | `107.20.66.5` | 8080 | Tests d'intégration |
+| **Production** | `54.234.61.221` | 8080 | Utilisateurs finaux |
 
-### 4. Configuration SonarCloud
+### URLs d'accès
 
-- Organization: `adalbert-code`
-- Project Key: `Adalbert-code_paymybuddy00`
-- Token: Configuré dans Jenkins credentials
+- **Staging :** http://107.20.66.5:8080
+- **Production :** http://54.234.61.221:8080
+- **Health Check Staging :** http://107.20.66.5:8080/actuator/health
+- **Health Check Production :** http://54.234.61.221:8080/actuator/health
 
-## 🚀 Installation et Déploiement
+---
 
-### Étape 1: Préparer le Repo GitLab
+## Prérequis
+
+### 1. Plugins Jenkins Requis
+
+| Plugin | Description |
+|--------|-------------|
+| Pipeline | Support des pipelines déclaratives |
+| Docker Pipeline | Intégration Docker dans les pipelines |
+| Git | Intégration SCM |
+| SonarQube Scanner | Analyse de qualité de code |
+| Slack Notification | Notifications Slack |
+| SSH Agent | Connexions SSH sécurisées |
+| Credentials Binding | Gestion sécurisée des secrets |
+
+### 2. Credentials Jenkins
+
+| ID | Type | Description |
+|----|------|-------------|
+| `dockerhub-credentials` | Username with password | Identifiants Docker Hub |
+| `sonarcloud-token` | Secret text | Token d'authentification SonarCloud |
+| `slack-webhook` | Secret text | URL Webhook Slack |
+| `aws-ssh-staging` | SSH Username with private key | Clé SSH pour EC2 Staging |
+| `aws-ssh-prod` | SSH Username with private key | Clé SSH pour EC2 Production |
+
+### 3. Configuration SonarCloud
+
+| Paramètre | Valeur |
+|-----------|--------|
+| Organization | `adalbert-code` |
+| Project Key | `Adalbert-code_paymybuddy00` |
+| URL | https://sonarcloud.io |
+
+---
+
+## Étapes de la Pipeline
+
+### Toutes les branches
+
+| # | Stage | Description | Durée moyenne |
+|---|-------|-------------|---------------|
+| 1 | **Checkout** | Récupération du code source depuis GitHub | ~1s |
+| 2 | **Tests Automatisés** | Exécution des tests JUnit avec Maven | ~1min 30s |
+| 3 | **Analyse SonarCloud** | Vérification de la qualité du code | ~1min |
+| 4 | **Compilation & Packaging** | Build du JAR avec Maven | ~20s |
+| 5 | **Build Docker** | Construction de l'image Docker | ~30s |
+| 6 | **Push Docker Hub** | Publication de l'image sur le registry | ~15s |
+
+### Branche main uniquement
+
+| # | Stage | Description | Durée moyenne |
+|---|-------|-------------|---------------|
+| 7 | **Déploiement Staging** | Déploiement sur EC2 Staging | ~30s |
+| 8 | **Tests Validation Staging** | Health check de l'application | ~30s |
+| 9 | **Déploiement Production** | Déploiement sur EC2 Prod (avec validation manuelle) | ~30s |
+| 10 | **Tests Validation Production** | Health check de l'application | ~30s |
+
+---
+
+## Installation et Configuration
+
+### 1. Préparation de l'environnement Jenkins
 
 ```bash
-# Cloner le repo
-git clone https://gitlab.com/Adalbert-code/paymybuddy00.git
-cd paymybuddy00
+# Cloner le repository
+git clone https://github.com/votre-repo/PayMyBuddy.git
+cd PayMyBuddy
 
-# Ajouter le Jenkinsfile et Dockerfile à la racine
-cp /path/to/Jenkinsfile .
-cp /path/to/Dockerfile .
-
-# Commit et push
-git add Jenkinsfile Dockerfile
-git commit -m "Add CI/CD pipeline configuration"
-git push origin main
+# La configuration Jenkins est dans le Jenkinsfile à la racine
 ```
 
-### Étape 2: Configurer Jenkins Job
+### 2. Configuration des instances EC2
 
-1. **Créer un nouveau Pipeline Job:**
-   - New Item → Pipeline
-   - Nom: `paymybuddy-cicd`
-
-2. **Configuration Pipeline:**
-   - Definition: `Pipeline script from SCM`
-   - SCM: `Git`
-   - Repository URL: `https://gitlab.com/Adalbert-code/paymybuddy00.git`
-   - Branch: `*/main`
-   - Script Path: `Jenkinsfile`
-
-3. **Configuration Gitflow (si multibranch):**
-   - Créer un Multibranch Pipeline
-   - Branch sources: Git
-   - Behaviors: Discover branches, PRs, etc.
-
-### Étape 3: Préparer les Serveurs AWS EC2
-
-**Sur chaque instance (Staging et Production):**
+Sur chaque instance AWS EC2 (Staging et Production) :
 
 ```bash
-# Se connecter via SSH
-ssh -i your-key.pem ubuntu@<IP_INSTANCE>
+# Connexion SSH
+ssh -i votre-cle.pem ubuntu@<IP_INSTANCE>
 
-# Installer Docker
+# Installation de Docker
 sudo apt update
 sudo apt install -y docker.io
 sudo systemctl start docker
 sudo systemctl enable docker
 sudo usermod -aG docker ubuntu
 
-# Se déconnecter et reconnecter pour appliquer les groupes
+# Déconnexion/reconnexion pour appliquer les groupes
 exit
-ssh -i your-key.pem ubuntu@<IP_INSTANCE>
+ssh -i votre-cle.pem ubuntu@<IP_INSTANCE>
 
-# Vérifier Docker
+# Vérification
 docker --version
 docker ps
 ```
 
-### Étape 4: Configurer SonarCloud
+### 3. Configuration des Security Groups AWS
 
-1. Aller sur https://sonarcloud.io
-2. Se connecter avec GitLab
-3. Importer le projet `paymybuddy00`
-4. Générer un token
-5. Ajouter le token dans Jenkins credentials
+| Règle | Port | Source | Description |
+|-------|------|--------|-------------|
+| SSH | 22 | IP Jenkins | Accès déploiement |
+| HTTP | 8080 | 0.0.0.0/0 | Accès application |
+| MySQL | 3306 | VPC interne | Base de données |
 
-### Étape 5: Tester la Pipeline
+### 4. Création des Credentials Jenkins
 
-```bash
-# Dans Jenkins, lancer un build manuel
-# Ou faire un commit pour déclencher automatiquement
+#### Docker Hub (Access Token)
+1. Docker Hub → Account Settings → Security → New Access Token
+2. Jenkins → Manage Jenkins → Credentials → Add Credentials
+3. Kind: `Username with password`
+4. ID: `dockerhub-credentials`
 
-git commit --allow-empty -m "Test pipeline"
-git push origin main
-```
-
-## 📊 Étapes de la Pipeline
-
-### Pour toutes les branches:
-1. **Checkout** - Clone le code depuis GitLab
-2. **Tests Automatisés** - Exécute les tests avec Maven
-3. **Vérification Qualité** - Analyse SonarCloud
-4. **Compilation & Packaging** - Build du JAR
-5. **Build Docker** - Création de l'image Docker
-6. **Push DockerHub** - Upload de l'image
-
-### Pour la branche `main` uniquement:
-7. **Déploiement Staging** - Déploie sur EC2 staging
-8. **Tests Validation Staging** - Health check
-9. **Déploiement Production** - Avec validation manuelle
-10. **Tests Validation Production** - Health check
-11. **Notification Slack** - Statut final
-
-## 🔍 Vérifications Post-Déploiement
-
-### Vérifier l'application Staging:
-```bash
-# Health check
-curl http://3.208.15.55:8080/actuator/health
-
-# Logs
-ssh ubuntu@3.208.15.55 "docker logs paymybuddy-staging"
-```
-
-### Vérifier l'application Production:
-```bash
-# Health check
-curl http://34.227.52.210:8080/actuator/health
-
-# Logs
-ssh ubuntu@34.227.52.210 "docker logs paymybuddy-prod"
-```
-
-## 🐛 Troubleshooting
-
-### Erreur: "Docker build failed"
-```bash
-# Vérifier que le Dockerfile est bien à la racine
-ls -la Dockerfile
-
-# Vérifier les logs Jenkins
-# Build → Console Output
-```
-
-### Erreur: "SSH connection refused"
-```bash
-# Vérifier que l'instance AWS est running
-# Vérifier les Security Groups (port 22 ouvert)
-# Vérifier la clé SSH dans Jenkins credentials
-```
-
-### Erreur: "SonarCloud analysis failed"
-```bash
-# Vérifier le token SonarCloud
-# Vérifier les credentials Jenkins
-# Vérifier que le projet existe sur SonarCloud
-```
-
-### Erreur: "Docker push unauthorized"
-```bash
-# Vérifier les credentials DockerHub dans Jenkins
-# Tester manuellement: docker login
-```
-
-## 📱 Notifications Slack
-
-Les notifications sont envoyées automatiquement à chaque build:
-- ✅ SUCCESS - Message vert
-- ❌ FAILURE - Message rouge
-- Détails: Job, Build #, Branch, Durée
-
-## 🔐 Sécurité
-
-**Bonnes pratiques appliquées:**
-- ✅ Credentials stockés dans Jenkins (pas hardcodés)
-- ✅ SSH avec clés privées (pas de passwords)
-- ✅ Tokens SonarCloud et DockerHub sécurisés
-- ✅ Security Groups AWS restrictifs
-- ✅ Validation manuelle avant déploiement prod
-
-## 📈 Améliorations Futures
-
-- [ ] Rollback automatique en cas d'échec
-- [ ] Tests de charge
-- [ ] Monitoring avec Prometheus/Grafana
-- [ ] Blue-Green deployment
-- [ ] Gestion des secrets avec Vault
-- [ ] Multi-stage deployment (dev/staging/prod)
-
-## 📚 Ressources
-
-- [Jenkins Documentation](https://www.jenkins.io/doc/)
-- [Docker Documentation](https://docs.docker.com/)
-- [SonarCloud Documentation](https://docs.sonarcloud.io/)
-- [AWS EC2 Documentation](https://docs.aws.amazon.com/ec2/)
-
-## ✨ Auteur
-
-**Christelle** - DevOps Engineer in Training
-- GitLab: [@Adalbert-code](https://gitlab.com/Adalbert-code)
-- Formation: EAZYTraining DevOps BootCamp
+#### SSH Keys (EC2)
+1. Jenkins → Manage Jenkins → Credentials → Add Credentials
+2. Kind: `SSH Username with private key`
+3. ID: `aws-ssh-staging` ou `aws-ssh-prod`
+4. Username: `ubuntu`
+5. Private Key: Contenu du fichier `.pem`
 
 ---
 
-**Statut du Lab:** ✅ Completed
-**Date:** Décembre 2025
+## Sécurité
+
+### Bonnes pratiques implémentées
+
+| Pratique | Implementation |
+|----------|----------------|
+| **Secrets sécurisés** | Tous les credentials dans Jenkins Credentials Store |
+| **Pas de hardcoding** | Variables d'environnement pour les secrets |
+| **Shell expansion** | `\$VAR` au lieu de `${VAR}` pour les secrets dans sh |
+| **SSH par clé** | Authentification par clé privée, pas de mot de passe |
+| **Validation manuelle** | Approbation requise avant déploiement production |
+| **Security Groups** | Ports ouverts uniquement selon le besoin |
+
+### Exemple de gestion sécurisée des credentials
+
+```groovy
+// CORRECT - Shell expansion (sécurisé)
+sh """
+    echo \$DOCKERHUB_CREDENTIALS_PSW | docker login -u \$DOCKERHUB_CREDENTIALS_USR --password-stdin
+"""
+
+// INCORRECT - Groovy interpolation (insécurisé)
+sh """
+    echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin
+"""
+```
+
+---
+
+## Troubleshooting
+
+### Problème : "Permission denied (publickey)" lors du déploiement SSH
+
+**Cause :** Credential SSH mal configuré ou IP incorrecte
+
+**Solution :**
+1. Vérifier l'ID du credential dans Jenkins (`aws-ssh-staging` / `aws-ssh-prod`)
+2. Vérifier que la clé privée est complète (incluant BEGIN/END)
+3. Vérifier l'IP de l'instance EC2
+
+### Problème : "Docker registry timeout" ou "DNS resolution failed"
+
+**Cause :** Problème DNS sur la VM Jenkins
+
+**Solution :**
+```bash
+# Sur la VM Jenkins (pas dans le conteneur)
+sudo mkdir -p /etc/systemd/resolved.conf.d/
+sudo tee /etc/systemd/resolved.conf.d/dns.conf << 'EOF'
+[Resolve]
+DNS=8.8.8.8 8.8.4.4
+FallbackDNS=1.1.1.1
+EOF
+
+sudo systemctl restart systemd-resolved
+sudo systemctl restart docker
+```
+
+### Problème : "SonarCloud server cannot be reached"
+
+**Cause :** DNS ou connectivité réseau
+
+**Solution :**
+1. Vérifier la résolution DNS : `ping sonarcloud.io`
+2. Ajouter `--dns 8.8.8.8` dans les options Docker du Jenkinsfile
+
+### Problème : "Docker login unauthorized"
+
+**Cause :** Credentials Docker Hub incorrects
+
+**Solution :**
+1. Utiliser un **Access Token** Docker Hub (pas le mot de passe du compte)
+2. Vérifier l'ID du credential : `dockerhub-credentials`
+
+---
+
+## Notifications Slack
+
+La pipeline envoie automatiquement des notifications Slack :
+
+| Statut | Couleur | Contenu |
+|--------|---------|---------|
+| **SUCCESS** | Vert | Job, Build #, Branch, Durée, URLs de déploiement |
+| **FAILURE** | Rouge | Job, Build #, Branch, Durée, Stage en échec |
+
+---
+
+## Métriques et Qualité
+
+### SonarCloud
+
+Le projet est analysé automatiquement par SonarCloud à chaque build :
+
+- **Quality Gate** : Vérification automatique des standards de qualité
+- **Code Coverage** : Couverture des tests
+- **Code Smells** : Détection des mauvaises pratiques
+- **Security Hotspots** : Analyse de sécurité
+- **Duplications** : Détection du code dupliqué
+
+Dashboard : https://sonarcloud.io/project/overview?id=Adalbert-code_paymybuddy00
+
+---
+
+## Améliorations Futures
+
+| Priorité | Amélioration | Description |
+|----------|--------------|-------------|
+| Haute | Rollback automatique | Retour à la version précédente en cas d'échec |
+| Haute | Tests d'intégration | Tests E2E avec Selenium ou Cypress |
+| Moyenne | Blue-Green Deployment | Déploiement sans interruption |
+| Moyenne | Monitoring | Prometheus + Grafana |
+| Basse | Gestion secrets | HashiCorp Vault |
+| Basse | Infrastructure as Code | Terraform pour AWS |
+
+---
+
+## Structure du Projet
+
+```
+PayMyBuddy/
+├── src/
+│   ├── main/
+│   │   ├── java/           # Code source Java
+│   │   └── resources/      # Configuration Spring
+│   └── test/               # Tests unitaires
+├── Dockerfile              # Image Docker multi-stage
+├── Jenkinsfile             # Pipeline CI/CD
+├── pom.xml                 # Configuration Maven
+├── README.md               # Documentation (ce fichier)
+└── RAPPORT_FINAL.md        # Rapport de projet
+```
+
+---
+
+## Conclusion
+
+Ce projet démontre la mise en place d'une pipeline CI/CD complète et professionnelle intégrant :
+
+- **Intégration Continue** : Tests automatisés et analyse de qualité
+- **Déploiement Continu** : Staging automatique, Production avec validation
+- **Infrastructure** : Conteneurisation Docker et déploiement AWS
+- **Bonnes pratiques** : Sécurité, GitFlow, notifications
+
+---
+
+## Ressources
+
+- [Documentation Jenkins](https://www.jenkins.io/doc/)
+- [Documentation Docker](https://docs.docker.com/)
+- [Documentation SonarCloud](https://docs.sonarcloud.io/)
+- [Documentation AWS EC2](https://docs.aws.amazon.com/ec2/)
+- [Spring Boot Reference](https://spring.io/projects/spring-boot)
+
+---
+
+## Contact
+
+**Adalbert Nanda (Christelle)**
+DevOps Engineer in Training
+Formation : EAZYTraining DevOps BootCamp
+
+---
+
+**Statut du Projet :** Completed
+**Dernière mise à jour :** Janvier 2026
