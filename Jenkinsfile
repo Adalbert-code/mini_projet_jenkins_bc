@@ -5,9 +5,9 @@
 // Description : Pipeline Jenkins pour automatiser les tests, l'analyse de code,
 //               le build, et le déploiement de l'application PayMyBuddy
 //
-// Environnements : 
-//   - Staging (EC2 54.160.137.198 - branche main uniquement)
-//   - Production (EC2 13.220.94.174 - branche main uniquement)
+// Environnements :
+//   - Staging (EC2 107.20.66.5 - branche main uniquement)
+//   - Production (EC2 54.234.61.221 - branche main uniquement)
 //   - Tests (H2 in-memory - toutes branches)
 // 
 // GitFlow :
@@ -35,11 +35,11 @@ pipeline {
         SONAR_ORGANIZATION = 'adalbert-code'
         
         // --- AWS EC2 Staging ---
-        EC2_STAGING_IP = '54.160.137.198'
+        EC2_STAGING_IP = '107.20.66.5'
         EC2_STAGING_USER = 'ubuntu'
-        
+
         // --- AWS EC2 Production ---
-        EC2_PROD_IP = '13.220.94.174'
+        EC2_PROD_IP = '54.234.61.221'
         EC2_PROD_USER = 'ubuntu'
         
         // --- Notifications ---
@@ -170,7 +170,7 @@ pipeline {
                     
                     // Push sur Docker Hub
                     sh """
-                        echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin
+                        echo \$DOCKERHUB_CREDENTIALS_PSW | docker login -u \$DOCKERHUB_CREDENTIALS_USR --password-stdin
                         docker push ${DOCKER_IMAGE}:${branchTag}-${buildNumber}
                     """
                     
@@ -254,7 +254,7 @@ pipeline {
                                     ${DOCKER_IMAGE}:${branchTag}-${buildNumber}
                                 
                                 echo "✅ Déploiement Staging terminé !"
-                                echo "🌐 URL: http://54.160.137.198:8080"
+                                echo "🌐 URL: http://107.20.66.5:8080"
                             '
                         """
                     }
@@ -283,7 +283,7 @@ pipeline {
                     sleep 30
                     
                     def healthCheckResult = sh(
-                        script: "curl -f http://54.160.137.198:8080/actuator/health",
+                        script: "curl -f http://107.20.66.5:8080/actuator/health",
                         returnStatus: true
                     )
                     
@@ -366,7 +366,7 @@ pipeline {
                                     ${DOCKER_IMAGE}:${branchTag}-${buildNumber}
                                 
                                 echo "✅ Déploiement Production terminé !"
-                                echo "🌐 URL: http://13.220.94.174:8080"
+                                echo "🌐 URL: http://54.234.61.221:8080"
                             '
                         """
                     }
@@ -395,7 +395,7 @@ pipeline {
                     sleep 30
                     
                     def healthCheckResult = sh(
-                        script: "curl -f http://13.220.94.174:8080/actuator/health",
+                        script: "curl -f http://54.234.61.221:8080/actuator/health",
                         returnStatus: true
                     )
                     
@@ -427,8 +427,8 @@ Branch: ${env.BRANCH_NAME}
 Duration: ${duration}
 
 :rocket: *Déployé en:*
-- Staging: http://54.160.137.198:8080
-- Production: http://13.220.94.174:8080
+- Staging: http://107.20.66.5:8080
+- Production: http://54.234.61.221:8080
                     """
                 } else {
                     message = """
