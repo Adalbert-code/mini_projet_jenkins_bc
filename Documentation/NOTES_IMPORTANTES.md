@@ -1,6 +1,6 @@
-# ⚠️ NOTES IMPORTANTES - À LIRE AVANT DE COMMENCER
+# NOTES IMPORTANTES - À LIRE AVANT DE COMMENCER
 
-## 🔴 Configurations Critiques à Vérifier
+## Configurations Critiques à Vérifier
 
 ### 1. Application Spring Boot
 
@@ -102,11 +102,11 @@ docker ps  # Doit fonctionner sans sudo
 
 ### 5. Security Groups AWS
 
-**STAGING (3.208.15.55):**
+**STAGING (3.xxx.15.xx):**
 - Port 22 (SSH) - Source: IP de ton Jenkins ou 0.0.0.0/0
 - Port 8080 (HTTP) - Source: 0.0.0.0/0 (pour les tests)
 
-**PRODUCTION (34.227.52.210):**
+**PRODUCTION (34.xxx.52.xxx):**
 - Port 22 (SSH) - Source: IP de ton Jenkins ou 0.0.0.0/0
 - Port 8080 (HTTP) - Source: 0.0.0.0/0
 
@@ -128,7 +128,7 @@ docker run hello-world
 # Si ça marche, c'est bon! ✅
 ```
 
-## 🎯 Ordre d'Exécution Recommandé
+## Ordre d'Exécution Recommandé
 
 ### Phase 1: Préparation (AVANT le premier build)
 1. ✅ Vérifier application Spring Boot (Actuator configuré)
@@ -150,7 +150,7 @@ docker run hello-world
 3. Valider le déploiement en production
 4. Vérifier les notifications Slack
 
-## 🚨 Problèmes Courants et Solutions
+## Problèmes Courants et Solutions
 
 ### Problème 1: "mvn: command not found" dans les tests
 **Cause:** L'agent Docker Maven n'est pas utilisé
@@ -181,7 +181,7 @@ docker run hello-world
 - Vérifier les logs: `docker logs paymybuddy-staging`
 - Vérifier le container: `docker ps`
 
-## 📝 Checklist Avant Premier Build
+## Checklist Avant Premier Build
 
 - [ ] Jenkinsfile ajouté au repo GitLab
 - [ ] Dockerfile ajouté au repo GitLab
@@ -199,7 +199,7 @@ docker run hello-world
 - [ ] Test SSH manuel réussi
 - [ ] Pipeline Job créé dans Jenkins
 
-## 🎓 Adaptation pour Gitflow
+## Adaptation pour Gitflow
 
 **Pour supporter le modèle Gitflow demandé dans le lab:**
 
@@ -215,7 +215,7 @@ Le Jenkinsfile actuel vérifie déjà la branche avec `when { branch 'main' }`.
 
 ✅ Cela respecte les exigences du lab!
 
-## 💡 Conseils Pro
+## Conseils Pro
 
 1. **Commence simple**: Lance un premier build, observe les erreurs, corrige une par une
 2. **Logs sont tes amis**: Console Output dans Jenkins montre TOUT
@@ -223,7 +223,7 @@ Le Jenkinsfile actuel vérifie déjà la branche avec `when { branch 'main' }`.
 4. **Security Groups**: La cause #1 des problèmes SSH/HTTP
 5. **Docker sur EC2**: Assure-toi que `ubuntu` peut utiliser Docker sans sudo
 
-## 🆘 Aide
+## Aide
 
 Si tu bloques:
 1. Lis les logs Jenkins (Console Output)

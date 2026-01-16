@@ -5,7 +5,7 @@
 
 **Formation :** EAZYTraining DevOps BootCamp
 **Module :** Jenkins - Intégration et Déploiement Continus
-**Auteur :** Adalbert Nanda (Christelle)
+**Auteur :** Adalbert Nanda 
 **Date de rendu :** Janvier 2026
 
 ---
@@ -33,16 +33,18 @@
 
 **PayMyBuddy** est une application web de transfert d'argent entre amis développée en Java avec le framework Spring Boot. L'objectif de ce projet était de mettre en place une **pipeline CI/CD complète** pour automatiser l'intégralité du cycle de vie de l'application.
 
-### 1.2 Objectifs du Projet
+### 1.2 Objectifs du 
 
-| Objectif | Description | Statut |
-|----------|-------------|--------|
+--------------------------------------------------------------------------------------
+|        Objectif          |                 Description                   | Statut  |
+|--------------------------|-----------------------------------------------|---------|
 | **Intégration Continue** | Automatiser les tests et l'analyse de qualité | Atteint |
-| **Containerisation** | Dockeriser l'application | Atteint |
-| **Déploiement Continu** | Déployer automatiquement sur AWS | Atteint |
-| **Multi-environnements** | Staging + Production | Atteint |
-| **Notifications** | Alertes Slack en temps réel | Atteint |
-| **Sécurité** | Gestion sécurisée des credentials | Atteint |
+| **Containerisation**     | Dockeriser l'application                      | Atteint |
+| **Déploiement Continu**  | Déployer automatiquement sur AWS              | Atteint |
+| **Multi-environnements** | Staging + Production                          | Atteint |
+| **Notifications**        | Alertes Slack en temps réel                   | Atteint |
+| **Sécurité**             | Gestion sécurisée des credentials             | Atteint |
+--------------------------------------------------------------------------------------
 
 ### 1.3 Périmètre Fonctionnel
 
@@ -85,10 +87,10 @@ La pipeline couvre les fonctionnalités suivantes :
 │  ┌─────────────────────────────────────────────────────────────────────────┐  │
 │  │                         PIPELINE CI/CD                                  │  │
 │  │                                                                         │  │
-│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  │  │
-│  │  │ Checkout │─>│  Tests   │─>│  Sonar   │─>│ Package  │─>│  Build   │  │  │
-│  │  │   SCM    │  │  JUnit   │  │  Cloud   │  │  Maven   │  │  Docker  │  │  │
-│  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘  └────┬─────┘  │  │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │  │
+│  │  │ Checkout │─>│  Tests   │─>│  Sonar   │─>│ Package  │─>│  Build   │   │  │
+│  │  │   SCM    │  │  JUnit   │  │  Cloud   │  │  Maven   │  │  Docker  │   │  │
+│  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘  └────-┬────┘   │  │
 │  │                                                                │        │  │
 │  └────────────────────────────────────────────────────────────────┼────────┘  │
 └───────────────────────────────────────────────────────────────────┼───────────┘
@@ -100,29 +102,29 @@ La pipeline couvre les fonctionnalités suivantes :
                     │                                      │   Registry   │     │
                     │                                      └──────┬───────┘     │
                     │                                             │             │
-                    │              ┌───────────────────────────────┤             │
-                    │              │                               │             │
-                    │              ▼                               ▼             │
-                    │     ┌────────────────┐             ┌────────────────┐      │
-                    │     │  EC2 STAGING   │             │ EC2 PRODUCTION │      │
-                    │     │ 107.20.66.5    │             │ 54.234.61.221  │      │
-                    │     │                │             │                │      │
-                    │     │ ┌────────────┐ │             │ ┌────────────┐ │      │
-                    │     │ │   MySQL    │ │             │ │   MySQL    │ │      │
-                    │     │ │  Container │ │             │ │  Container │ │      │
-                    │     │ └────────────┘ │             │ └────────────┘ │      │
-                    │     │ ┌────────────┐ │             │ ┌────────────┐ │      │
-                    │     │ │ PayMyBuddy │ │             │ │ PayMyBuddy │ │      │
-                    │     │ │  Container │ │             │ │  Container │ │      │
-                    │     │ └────────────┘ │             │ └────────────┘ │      │
-                    │     └────────────────┘             └────────────────┘      │
-                    │              AWS CLOUD                                     │
+                    │              ┌──────────────────────────────┤             │
+                    │              │                              │             │
+                    │              ▼                              ▼             │
+                    │     ┌────────────────┐             ┌────────────────┐     │
+                    │     │  EC2 STAGING   │             │ EC2 PRODUCTION │     │
+                    │     │ 107.20.66.5    │             │ 54.234.61.221  │     │
+                    │     │                │             │                │     │
+                    │     │ ┌────────────┐ │             │ ┌────────────┐ │     │
+                    │     │ │   MySQL    │ │             │ │   MySQL    │ │     │
+                    │     │ │  Container │ │             │ │  Container │ │     │
+                    │     │ └────────────┘ │             │ └────────────┘ │     │
+                    │     │ ┌────────────┐ │             │ ┌────────────┐ │     │
+                    │     │ │ PayMyBuddy │ │             │ │ PayMyBuddy │ │     │
+                    │     │ │  Container │ │             │ │  Container │ │     │
+                    │     │ └────────────┘ │             │ └────────────┘ │     │
+                    │     └────────────────┘             └────────────────┘     │
+                    │              AWS CLOUD                                    │
                     └───────────────────────────────────────────────────────────┘
 
-                    ┌───────────────────┐         ┌───────────────────┐
-                    │    SonarCloud     │         │      Slack        │
-                    │  Analyse Qualité  │         │   Notifications   │
-                    └───────────────────┘         └───────────────────┘
+                        ┌───────────────────┐         ┌───────────────────┐
+                        │    SonarCloud     │         │      Slack        │
+                        │  Analyse Qualité  │         │   Notifications   │
+                        └───────────────────┘         └───────────────────┘
 ```
 
 ### 2.2 Flux de Données
@@ -149,35 +151,38 @@ La pipeline couvre les fonctionnalités suivantes :
 
 ### 3.1 Stack Technologique
 
-| Catégorie | Technologie | Version | Rôle |
-|-----------|-------------|---------|------|
-| **Application** | Java | 17 (LTS) | Langage de programmation |
-| | Spring Boot | 3.x | Framework applicatif |
-| | Maven | 3.9 | Gestion des dépendances et build |
-| | MySQL | 8.0 | Base de données |
-| **CI/CD** | Jenkins | 2.520 | Serveur d'orchestration CI/CD |
-| | Docker | Latest | Containerisation |
-| | Docker Hub | - | Registry d'images |
-| **Qualité** | SonarCloud | - | Analyse statique de code |
-| | JUnit | 5 | Framework de tests |
-| **Infrastructure** | AWS EC2 | t2.micro | Instances de déploiement |
-| | Vagrant | 2.x | Virtualisation locale |
-| | VirtualBox | - | Hyperviseur |
-| **Communication** | Slack | - | Notifications d'équipe |
-| | SSH | - | Connexion sécurisée aux serveurs |
+---------------------------------------------------------------------------------
+|      Catégorie    | Technologie | Version  |              Rôle                |
+|-------------------|-------------|----------|----------------------------------|
+| **Application**   |    Java     | 17 (LTS) | Langage de programmation         |
+|                   | Spring Boot |   3.x    | Framework applicatif             |
+|                   | Maven       |   3.9    | Gestion des dépendances et build |
+|                   | MySQL       |   8.0    | Base de données                  |
+| **CI/CD**         | Jenkins     |   2.520  | Serveur d'orchestration CI/CD    |
+|                   | Docker      |  Latest  | Containerisation                 |
+|                   | Docker Hub  |    -     | Registry d'images                |
+| **Qualité**       | SonarCloud  |    -     | Analyse statique de code         |
+|                   | JUnit       |    5     | Framework de tests               |
+| **Infrastructure**| AWS EC2     | t2.micro | Instances de déploiement         |
+|                   | Vagrant     |   2.x    | Virtualisation locale            |
+|                   | VirtualBox  |    -     | Hyperviseur                      |
+| **Communication** | Slack       |    -     | Notifications d'équipe           |
+|                   | SSH         |    -     | Connexion sécurisée aux serveurs |
+---------------------------------------------------------------------------------
 
 ### 3.2 Plugins Jenkins Utilisés
 
-| Plugin | Utilisation |
-|--------|-------------|
-| **Pipeline** | Support des pipelines déclaratives |
-| **Docker Pipeline** | Intégration native Docker |
-| **Git** | Connexion aux repositories Git |
-| **SSH Agent** | Gestion des connexions SSH |
-| **Credentials Binding** | Injection sécurisée des secrets |
-| **SonarQube Scanner** | Intégration SonarCloud |
-| **Slack Notification** | Envoi de notifications |
-
+----------------------------------------------------------------
+|          Plugin         |          Utilisation               |
+|-------------------------|------------------------------------|
+| **Pipeline**            | Support des pipelines déclaratives |
+| **Docker Pipeline**     | Intégration native Docker          |
+| **Git**                 | Connexion aux repositories Git     |
+| **SSH Agent**           | Gestion des connexions SSH         |
+| **Credentials Binding** | Injection sécurisée des secrets    |
+| **SonarQube Scanner**   | Intégration SonarCloud             |
+| **Slack Notification**  | Envoi de notifications             |
+----------------------------------------------------------------
 ---
 
 ## 4. Implémentation de la Pipeline
@@ -343,11 +348,13 @@ stage('Déploiement Production') {
 
 ### 5.1 Configuration des Environnements
 
-| Environnement | IP | Profil Spring | Base de données |
-|---------------|-----|---------------|-----------------|
-| **Test** | - | `test` | H2 (in-memory) |
-| **Staging** | 107.20.66.5 | `staging` | MySQL (container) |
-| **Production** | 54.234.61.221 | `production` | MySQL (container) |
+----------------------------------------------------------------------
+|  Environnement |      IP       | Profil Spring | Base de données   |
+|----------------|---------------|---------------|-------------------|
+| **Test**       |       -       | `test`        | H2 (in-memory)    |
+| **Staging**    | 107.20.66.5   | `staging`     | MySQL (container) |
+| **Production** | 54.234.61.221 | `production`  | MySQL (container) |
+----------------------------------------------------------------------
 
 ### 5.2 Configuration Spring Boot par Environnement
 
@@ -375,17 +382,17 @@ logging.level.root=INFO
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │                      VPC                                  │  │
 │  │                                                           │  │
-│  │  ┌─────────────────────┐    ┌─────────────────────┐      │  │
-│  │  │   EC2 STAGING       │    │   EC2 PRODUCTION    │      │  │
-│  │  │   107.20.66.5       │    │   54.234.61.221     │      │  │
-│  │  │                     │    │                     │      │  │
-│  │  │   Security Group:   │    │   Security Group:   │      │  │
-│  │  │   - SSH (22)        │    │   - SSH (22)        │      │  │
-│  │  │   - HTTP (8080)     │    │   - HTTP (8080)     │      │  │
-│  │  │                     │    │                     │      │  │
-│  │  │   Instance: t2.micro│    │   Instance: t2.micro│      │  │
-│  │  │   OS: Ubuntu        │    │   OS: Ubuntu        │      │  │
-│  │  └─────────────────────┘    └─────────────────────┘      │  │
+│  │  ┌─────────────────────┐    ┌─────────────────────┐       │  │
+│  │  │   EC2 STAGING       │    │   EC2 PRODUCTION    │       │  │
+│  │  │   107.20.66.5       │    │   54.234.61.221     │       │  │
+│  │  │                     │    │                     │       │  │
+│  │  │   Security Group:   │    │   Security Group:   │       │  │
+│  │  │   - SSH (22)        │    │   - SSH (22)        │       │  │
+│  │  │   - HTTP (8080)     │    │   - HTTP (8080)     │       │  │
+│  │  │                     │    │                     │       │  │
+│  │  │   Instance: t2.micro│    │   Instance: t2.micro│       │  │
+│  │  │   OS: Ubuntu        │    │   OS: Ubuntu        │       │  │
+│  │  └─────────────────────┘    └─────────────────────┘       │  │
 │  │                                                           │  │
 │  └───────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
@@ -397,12 +404,14 @@ logging.level.root=INFO
 
 ### 6.1 Gestion des Secrets
 
-| Secret | Stockage | Utilisation |
-|--------|----------|-------------|
-| Docker Hub credentials | Jenkins Credentials | Push d'images |
-| SonarCloud token | Jenkins Credentials | Analyse de code |
-| SSH Keys EC2 | Jenkins Credentials | Déploiement |
-| Slack Webhook | Jenkins Credentials | Notifications |
+------------------------------------------------------------------
+|          Secret        |      Stockage       | Utilisation     |
+|------------------------|---------------------|-----------------|
+| Docker Hub credentials | Jenkins Credentials | Push d'images   |
+| SonarCloud token       | Jenkins Credentials | Analyse de code |
+| SSH Keys EC2           | Jenkins Credentials | Déploiement     |
+| Slack Webhook          | Jenkins Credentials | Notifications   |
+------------------------------------------------------------------
 
 ### 6.2 Bonnes Pratiques Implémentées
 
@@ -557,10 +566,12 @@ sudo systemctl restart docker
 
 ### 8.2 URLs de Démonstration
 
-| Environnement | URL | Health Check |
-|---------------|-----|--------------|
-| Staging | http://107.20.66.5:8080 | http://107.20.66.5:8080/actuator/health |
-| Production | http://54.234.61.221:8080 | http://54.234.61.221:8080/actuator/health |
+|--------------------------------------------------------------------------------------|
+|Environnement |           URL             |             Health Check                  |
+|--------------|---------------------------|-------------------------------------------|
+| Staging      | http://107.20.66.5:8080   | http://107.20.66.5:8080/actuator/health   |
+| Production   | http://54.234.61.221:8080 | http://54.234.61.221:8080/actuator/health |
+|--------------------------------------------------------------------------------------|
 
 ### 8.3 Captures d'Écran
 
@@ -568,14 +579,16 @@ sudo systemctl restart docker
 
 ### 8.4 Métriques SonarCloud
 
-| Métrique | Valeur | Seuil |
-|----------|--------|-------|
-| Quality Gate | Passed | - |
-| Bugs | 0 | 0 |
-| Vulnerabilities | 0 | 0 |
-| Code Smells | < 10 | < 50 |
-| Coverage | > 70% | > 60% |
-| Duplications | < 3% | < 5% |
+|-----------------------------------|
+| Métrique        | Valeur  | Seuil |
+|-----------------|---------|-------|
+| Quality Gate    | Passed  |   -   |
+| Bugs            |    0    |   0   |
+| Vulnerabilities |    0    |   0   |
+| Code Smells     |    < 10 |  < 50 |
+| Coverage        |    >70% | > 60% |
+| Duplications    |    < 3% | < 5%  |
+|-----------------------------------|
 
 Dashboard : https://sonarcloud.io/project/overview?id=Adalbert-code_paymybuddy00
 
@@ -585,23 +598,29 @@ Dashboard : https://sonarcloud.io/project/overview?id=Adalbert-code_paymybuddy00
 
 ### 9.1 Compétences Techniques
 
-| Domaine | Compétences |
-|---------|-------------|
-| **CI/CD** | Conception et implémentation de pipelines Jenkins |
-| | Syntaxe déclarative Jenkinsfile |
-| | Gestion des stages conditionnels |
-| | Intégration d'outils externes |
-| **Docker** | Écriture de Dockerfile multi-stage |
-| | Utilisation de Docker dans les pipelines |
-| | Gestion des registries |
-| **AWS** | Déploiement sur EC2 |
-| | Configuration des Security Groups |
-| | Gestion des accès SSH |
-| **Qualité** | Intégration SonarCloud |
-| | Analyse de code statique |
-| | Quality Gates |
-| **Sécurité** | Gestion des secrets Jenkins |
-| | Bonnes pratiques de sécurité CI/CD |
+|------------------------------------------------------------------|
+|    Domaine   |                Compétences                        |
+|--------------|---------------------------------------------------|
+| **CI/CD**    | Conception et implémentation de pipelines Jenkins |
+|              | Syntaxe déclarative Jenkinsfile                   |
+|              | Gestion des stages conditionnels                  |
+|              | Intégration d'outils externes                     |
+|------------------------------------------------------------------|
+| **Docker**   | Écriture de Dockerfile multi-stage                |
+|              | Utilisation de Docker dans les pipelines          |
+|              | Gestion des registries                            |
+|------------------------------------------------------------------|
+| **AWS**      | Déploiement sur EC2                               |
+|              | Configuration des Security Groups                 |
+|              | Gestion des accès SSH                             |
+|------------------------------------------------------------------|
+| **Qualité**  | Intégration SonarCloud                            |
+|              | Analyse de code statique                          |
+|              | Quality Gates                                     |
+|------------------------------------------------------------------|
+| **Sécurité** | Gestion des secrets Jenkins                       |
+|              | Bonnes pratiques de sécurité CI/CD                |
+|------------------------------------------------------------------|
 
 ### 9.2 Compétences Transversales
 
@@ -617,29 +636,34 @@ Dashboard : https://sonarcloud.io/project/overview?id=Adalbert-code_paymybuddy00
 
 ### 10.1 Améliorations Court Terme
 
-| Amélioration | Description | Priorité |
-|--------------|-------------|----------|
-| **Rollback automatique** | Retour automatique à la version N-1 en cas d'échec du health check | Haute |
-| **Tests d'intégration** | Ajout de tests E2E avec Selenium | Haute |
-| **Cache Maven** | Optimisation du temps de build avec cache persistant | Moyenne |
+--------------------------------------------------------------------------------------------------------------
+|        Amélioration        |                             Description                            | Priorité |
+|----------------------------|--------------------------------------------------------------------|----------|
+| **Rollback automatique**   | Retour automatique à la version N-1 en cas d'échec du health check | Haute    |
+| **Tests d'intégration**    | Ajout de tests E2E avec Selenium                                   | Haute    |
+| **Cache Maven**            | Optimisation du temps de build avec cache persistant               | Moyenne  |
+--------------------------------------------------------------------------------------------------------------
 
 ### 10.2 Améliorations Moyen Terme
 
-| Amélioration | Description | Priorité |
-|--------------|-------------|----------|
-| **Blue-Green Deployment** | Déploiement sans interruption de service | Haute |
-| **Monitoring** | Intégration Prometheus + Grafana | Moyenne |
-| **Logs centralisés** | ELK Stack (Elasticsearch, Logstash, Kibana) | Moyenne |
+--------------------------------------------------------------------------------------
+| Amélioration              |                 Description                 | Priorité |
+|---------------------------|---------------------------------------------|----------|
+| **Blue-Green Deployment** | Déploiement sans interruption de service    |    Haute |
+| **Monitoring**            | Intégration Prometheus + Grafana            | Moyenne  |
+| **Logs centralisés**      | ELK Stack (Elasticsearch, Logstash, Kibana) | Moyenne  |
+--------------------------------------------------------------------------------------
 
 ### 10.3 Améliorations Long Terme
 
-| Amélioration | Description | Priorité |
-|--------------|-------------|----------|
-| **Infrastructure as Code** | Terraform pour provisionner AWS | Moyenne |
-| **Kubernetes** | Migration vers K8s pour l'orchestration | Basse |
-| **GitOps** | ArgoCD pour le déploiement déclaratif | Basse |
-| **HashiCorp Vault** | Gestion avancée des secrets | Basse |
-
+-----------------------------------------------------------------------------------
+|        Amélioration        |             Description                 | Priorité |
+|----------------------------|-----------------------------------------|----------|
+| **Infrastructure as Code** | Terraform pour provisionner AWS         | Moyenne  |
+| **Kubernetes**             | Migration vers K8s pour l'orchestration | Basse    |
+| **GitOps**                 | ArgoCD pour le déploiement déclaratif   | Basse    |
+| **HashiCorp Vault**        | Gestion avancée des secrets             | Basse    |
+-----------------------------------------------------------------------------------
 ---
 
 ## 11. Conclusion
@@ -720,6 +744,6 @@ PayMyBuddy/
 
 **Fin du Rapport**
 
-*Document rédigé par Adalbert Nanda (Christelle)*
+*Document rédigé par Adalbert Nanda *
 *Formation EAZYTraining DevOps BootCamp*
 *Janvier 2026*
