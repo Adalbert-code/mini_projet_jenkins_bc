@@ -54,7 +54,7 @@ Ce projet implémente une **pipeline CI/CD complète** avec Jenkins pour l'appli
 ---
 
 ## Technologies Utilisées
-|--------------------------------------------------------------------|
+
 |       Catégorie    |   Technologie | Version  | Utilisation        |
 |--------------------|---------------|----------|--------------------|
 | **Application**    |   Java        |   17     | Runtime            |
@@ -68,18 +68,18 @@ Ce projet implémente une **pipeline CI/CD complète** avec Jenkins pour l'appli
 | **Infrastructure** |   AWS EC2     | t2.micro | Serveurs           |
 |                    |   Vagrant     |    -     | VM locale Jenkins  |
 | **Notifications**  |   Slack       |    -     |  Alertes           |
-|--------------------------------------------------------------------|
+
 
 ---
 
 ## Environnements de Déploiement
 
-|---------------------------------------------------------------|
+
 | Environnement  |   IP Publique   | Port |         Usage       |
 |----------------|-----------------|------|---------------------|
 | **Staging**    | `107.20.66.5`   | 8080 | Tests d'intégration |
 | **Production** | `54.234.61.221` | 8080 | Utilisateurs finaux |
-|---------------------------------------------------------------|
+
 
 ### URLs d'accès
 
@@ -94,7 +94,7 @@ Ce projet implémente une **pipeline CI/CD complète** avec Jenkins pour l'appli
 
 ### 1. Plugins Jenkins Requis
 
-|-------------------------------------------------------------|
+
 |         Plugin      |             Description               |
 |---------------------|---------------------------------------|
 | Pipeline            | Support des pipelines déclaratives    |
@@ -104,11 +104,11 @@ Ce projet implémente une **pipeline CI/CD complète** avec Jenkins pour l'appli
 | Slack Notification  | Notifications Slack                   |
 | SSH Agent           | Connexions SSH sécurisées             |
 | Credentials Binding | Gestion sécurisée des secrets         |
-|-------------------------------------------------------------|
+
 
 ### 2. Credentials Jenkins
 
-|-----------------------------------------------------------------------------------------------|
+
 |           ID            |              Type             |             Description             |
 |-------------------------|-------------------------------|-------------------------------------|
 | `dockerhub-credentials` | Username with password        | Identifiants Docker Hub             |
@@ -116,17 +116,17 @@ Ce projet implémente une **pipeline CI/CD complète** avec Jenkins pour l'appli
 | `slack-webhook`         | Secret text                   | URL Webhook Slack                   |
 | `aws-ssh-staging`       | SSH Username with private key | Clé SSH pour EC2 Staging            |
 | `aws-ssh-prod`          | SSH Username with private key | Clé SSH pour EC2 Production         |
-|-----------------------------------------------------------------------------------------------|
+
 
 ### 3. Configuration SonarCloud
 
-|---------------------------------------------|
+
 |   Paramètre  |            Valeur            |
 |--------------|------------------------------|
 | Organization | `adalbert-code`              |
 | Project Key  | `Adalbert-code_paymybuddy00` |
 | URL          | https://sonarcloud.io        |
-|---------------------------------------------|
+
 
 ---
 
@@ -134,7 +134,7 @@ Ce projet implémente une **pipeline CI/CD complète** avec Jenkins pour l'appli
 
 ### Toutes les branches
 
-|---------------------------------------------------------------------------------------------|
+
 | # |             Stage           |             Description                   | Durée moyenne |
 |---|-----------------------------|-------------------------------------------|---------------|
 | 1 | **Checkout**                | Récupération du code source depuis GitHub | ~1s           |
@@ -143,17 +143,17 @@ Ce projet implémente une **pipeline CI/CD complète** avec Jenkins pour l'appli
 | 4 | **Compilation & Packaging** | Build du JAR avec Maven                   | ~20s          |
 | 5 | **Build Docker**            | Construction de l'image Docker            | ~30s          |
 | 6 | **Push Docker Hub**         | Publication de l'image sur le registry    | ~15s          |
-|---------------------------------------------------------------------------------------------|
+
 ### Branche main uniquement
 
-|------------------------------------------------------------------------------------------------------------|
+
 | # |               Stage              |                     Description                     | Durée moyenne |
 |---|----------------------------------|-----------------------------------------------------|---------------|
 | 7 | **Déploiement Staging**          | Déploiement sur EC2 Staging                         |     ~30s      |
 | 8 | **Tests Validation Staging**     | Health check de l'application                       |     ~30s      |
 | 9 | **Déploiement Production**       | Déploiement sur EC2 Prod (avec validation manuelle) |     ~30s      |
 | 10 | **Tests Validation Production** | Health check de l'application                       |     ~30s      |
-|------------------------------------------------------------------------------------------------------------|
+
 
 ---
 
@@ -195,13 +195,13 @@ docker ps
 
 ### 3. Configuration des Security Groups AWS
 
-|------------------------------------------------|
+
 | Règle | Port |   Source    |    Description    |
 |-------|------|-------------|-------------------|
 | SSH   | 22   | IP Jenkins  | Accès déploiement |
 | HTTP  | 8080 | 0.0.0.0/0   | Accès application |
 | MySQL | 3306 | VPC interne | Base de données   |
-|------------------------------------------------|
+
 
 ### 4. Création des Credentials Jenkins
 
@@ -224,7 +224,7 @@ docker ps
 
 ### Bonnes pratiques implémentées
 
-|--------------------------------------------------------------------------------|
+
 |         Pratique        |                Implementation                        |
 |-------------------------|------------------------------------------------------|
 | **Secrets sécurisés**   | Tous les credentials dans Jenkins Credentials Store  |
@@ -233,7 +233,7 @@ docker ps
 | **SSH par clé**         | Authentification par clé privée, pas de mot de passe |
 | **Validation manuelle** | Approbation requise avant déploiement production     |
 | **Security Groups**     | Ports ouverts uniquement selon le besoin             |
-|--------------------------------------------------------------------------------|
+
 
 ### Exemple de gestion sécurisée des credentials
 
@@ -302,12 +302,12 @@ sudo systemctl restart docker
 
 La pipeline envoie automatiquement des notifications Slack :
 
-|--------------------------------------------------------------------------|
+
 |    Statut   | Couleur |                   Contenu                        |
 |-------------|---------|--------------------------------------------------|
 | **SUCCESS** | Vert    | Job, Build #, Branch, Durée, URLs de déploiement |
 | **FAILURE** | Rouge   | Job, Build #, Branch, Durée, Stage en échec      |
-|--------------------------------------------------------------------------|
+
 
 ---
 
@@ -329,7 +329,7 @@ Dashboard : https://sonarcloud.io/project/overview?id=Adalbert-code_paymybuddy00
 
 ## Améliorations Futures
 
-|-----------------------------------------------------------------------------------|
+
 | Priorité |       Amélioration     |                 Description                   |
 |----------|------------------------|-----------------------------------------------|
 | Haute    | Rollback automatique   | Retour à la version précédente en cas d'échec |
@@ -338,7 +338,7 @@ Dashboard : https://sonarcloud.io/project/overview?id=Adalbert-code_paymybuddy00
 | Moyenne  | Monitoring             | Prometheus + Grafana                          | 
 | Basse    | Gestion secrets        | HashiCorp Vault                               |
 | Basse    | Infrastructure as Code | Terraform pour AWS                            |
-|-----------------------------------------------------------------------------------|
+
 
 ---
 
@@ -373,9 +373,12 @@ Ce projet démontre la mise en place d'une pipeline CI/CD complète et professio
 
 ## Screenshots
 
-![Staging Deployment](/screenshots/ec2_staging.png)
-![Production Deployment](/screenshots/ec2_prod.png)
-![Pipelines Deployment](/screenshots/pipelines_steps.png)
+![Staging Deployment](screenshots/ec2_staging.png)
+   *Application en staging*
+![Production Deployment](screenshots/ec2_prod.png)
+   *Application en Production* 
+![Pipelines Deployment](screenshots/pipelines_steps.png)
+   *Deployment steps*
 ## Ressources
 
 - [Documentation Jenkins](https://www.jenkins.io/doc/)
